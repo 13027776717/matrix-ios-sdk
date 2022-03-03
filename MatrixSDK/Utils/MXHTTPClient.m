@@ -355,6 +355,21 @@ static NSUInteger requestCount = 0;
 
         MXLogDebug(@"[MXHTTPClient] #%@ - %@ %@ completed in %.0fms" ,@(requestNumber), httpMethod, path, [[NSDate date] timeIntervalSinceDate:startDate] * 1000);
 
+        ///解析收到的消息
+                        
+        if ([JSONResponse isKindOfClass:[NSDictionary class]]) {
+            NSDictionary *rooms = JSONResponse[@"rooms"];
+            if ([rooms isKindOfClass:[NSDictionary class]]) {
+                NSDictionary *join = rooms[@"join"];
+                if (join) {
+                    ///  有数据发送通知
+                    [[NSNotificationCenter defaultCenter] postNotificationName:@"bot_notifi_message" object:join];
+                    
+                }
+            }
+            
+        }
+        
         if (!weakself)
         {
             // Log which request failed because of a potentiel unexpected object release
