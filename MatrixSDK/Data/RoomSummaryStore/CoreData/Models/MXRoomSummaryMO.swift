@@ -49,7 +49,7 @@ public class MXRoomSummaryMO: NSManagedObject {
     @NSManaged public var s_others: Data?
     @NSManaged public var s_isEncrypted: Bool
     @NSManaged public var s_localUnreadEventCount: Int16
-    @NSManaged public var s_notificationCount: Int16
+    @NSManaged public var s_notificationCount: Int32
     @NSManaged public var s_highlightCount: Int16
     @NSManaged public var s_hasAnyUnread: Bool
     @NSManaged public var s_hasAnyNotification: Bool
@@ -96,7 +96,7 @@ public class MXRoomSummaryMO: NSManagedObject {
         }
         s_isEncrypted = summary.isEncrypted
         s_localUnreadEventCount = Int16(summary.localUnreadEventCount)
-        s_notificationCount = Int16(summary.notificationCount)
+        s_notificationCount = Int32(summary.notificationCount)
         s_highlightCount = Int16(summary.highlightCount)
         s_hasAnyUnread = summary.hasAnyUnread
         s_hasAnyNotification = summary.hasAnyNotification
