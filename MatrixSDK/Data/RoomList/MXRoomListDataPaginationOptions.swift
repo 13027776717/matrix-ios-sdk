@@ -21,7 +21,7 @@ public enum MXRoomListDataPaginationOptions {
     public typealias RawValue = Int
     
     internal static let NoneValue: RawValue = -1
-    internal static let DefaultValue: RawValue = 10
+    internal static let DefaultValue: RawValue = 100
     
     public init(rawValue: RawValue) {
         switch rawValue {
