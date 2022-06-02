@@ -29,14 +29,15 @@ public class MXCoreDataRoomListDataManager: NSObject, MXRoomListDataManager {
         assert(options.async, "[MXCoreDataRoomListDataManager] cannot work with sync fetch options")
         
         if options.filterOptions.onlySuggested {
-            guard let spaceService = session?.spaceService else {
+            guard let session = session, let spaceService = session.spaceService else {
                 fatalError("[MXCoreDataRoomListDataManager] Session has no spaceService")
             }
             return MXSuggestedRoomListDataFetcher(fetchOptions: options,
+                                                  session: session,
                                                   spaceService: spaceService)
         }
-        guard let session = session, let store = session.store else {
-            fatalError("[MXCoreDataRoomListDataManager] No session or no store")
+        guard let store = session?.store else {
+            fatalError("[MXCoreDataRoomListDataManager] No session store")
         }
         guard let coreDataStore = store.roomSummaryStore as? MXRoomSummaryCoreDataContextableStore else {
             fatalError("[MXCoreDataRoomListDataManager] Session.store.roomSummaryStore is not CoreDataContextable")
@@ -45,8 +46,7 @@ public class MXCoreDataRoomListDataManager: NSObject, MXRoomListDataManager {
         assert(coreDataStore.mainManagedObjectContext.concurrencyType == .mainQueueConcurrencyType,
                "[MXCoreDataRoomListDataManager] Managed object context must have mainQueueConcurrencyType")
         
-        return MXCoreDataRoomListDataFetcher(session: session,
-                                             fetchOptions: options,
+        return MXCoreDataRoomListDataFetcher(fetchOptions: options,
                                              store: coreDataStore)
     }
 }

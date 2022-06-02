@@ -33,6 +33,8 @@ internal class MockRoomSummary: NSObject, MXRoomSummaryProtocol {
     
     var aliases: [String] = []
     
+    var historyVisibility: String? = nil
+    
     var joinRule: String? = kMXRoomJoinRuleInvite
     
     var membership: MXMembership = .join
@@ -93,6 +95,8 @@ internal class MockRoomSummary: NSObject, MXRoomSummaryProtocol {
     
     var parentSpaceIds: Set<String> = []
     
+    var userIdsSharingLiveBeacon: Set<String> = []
+    
     init(withRoomId roomId: String) {
         self.roomId = roomId
         super.init()
@@ -122,5 +126,4 @@ internal class MockRoomSummary: NSObject, MXRoomSummaryProtocol {
     override var description: String {
         return "<MockRoomSummary: \(roomId) \(String(describing: displayname))>"
     }
-    
 }

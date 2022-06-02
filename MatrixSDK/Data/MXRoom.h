@@ -39,6 +39,7 @@
 #import "MXCall.h"
 #import "MXEventTimeline.h"
 #import "MXEventsEnumerator.h"
+#import "MXEventContentLocation.h"
 #import "MXCryptoConstants.h"
 #import "MXSendReplyEventStringLocalizerProtocol.h"
 
@@ -68,6 +69,11 @@ FOUNDATION_EXPORT NSString *const kMXRoomDidFlushDataNotification;
  Error code when tried to join an already joined room.
  */
 FOUNDATION_EXPORT NSInteger const kMXRoomAlreadyJoinedErrorCode;
+
+/**
+ Error code when attempting to use a room invite sender which is invalid.
+ */
+FOUNDATION_EXPORT NSInteger const kMXRoomInvalidInviteSenderErrorCode;
 
 /**
  `MXRoom` is the class
@@ -156,9 +162,18 @@ FOUNDATION_EXPORT NSInteger const kMXRoomAlreadyJoinedErrorCode;
  The text message partially typed by the user but not yet sent.
  The value is stored by the session store. Thus, it can be retrieved
  when the application restarts.
+ 
+ @deprecated use partialAttributedTextMessage
+ */
+@property (nonatomic) NSString *partialTextMessage __deprecated_msg("use partialAttributedTextMessage");
+
+/**
+ The text message partially typed by the user but not yet sent.
+ The value is stored by the session store. Thus, it can be retrieved
+ when the application restarts.
  */
 // @TODO(summary): Move to MXRoomSummary
-@property (nonatomic) NSString *partialTextMessage;
+@property (nonatomic) NSAttributedString *partialAttributedTextMessage;
 
 /**
  The list of ids of users currently typing in this room.
@@ -675,6 +690,21 @@ FOUNDATION_EXPORT NSInteger const kMXRoomAlreadyJoinedErrorCode;
                         failure:(void (^)(NSError *error))failure NS_REFINED_FOR_SWIFT;
 
 /**
+ Set the join rule of the room.
+
+ @param joinRule the join rule to set.
+ @param parentIds list of parent room ID (requested for `restricted` join rule)
+ @param success A block object called when the operation succeeds.
+ @param failure A block object called when the operation fails.
+
+ @return a MXHTTPOperation instance.
+ */
+- (MXHTTPOperation*)setJoinRule:(MXRoomJoinRule)joinRule
+                      parentIds:(NSArray<NSString *>*)parentIds
+                        success:(void (^)(void))success
+                        failure:(void (^)(NSError *error))failure NS_REFINED_FOR_SWIFT;
+
+/**
  Set the guest access of the room.
 
  @param guestAccess the guest access to set.
@@ -776,6 +806,18 @@ FOUNDATION_EXPORT NSInteger const kMXRoomAlreadyJoinedErrorCode;
  */
 - (MXHTTPOperation*)leave:(void (^)(void))success
                   failure:(void (^)(NSError *error))failure NS_REFINED_FOR_SWIFT;
+
+/**
+ Ignore the user who sent the invite to this room. This user is then added to the current
+ user's ignore list.
+ 
+ @param success A block object called when the operation is complete.
+ @param failure A block object called when the operation fails.
+
+ @return a MXHTTPOperation instance.
+ */
+- (MXHTTPOperation*)ignoreInviteSender:(void (^)(void))success
+                               failure:(void (^)(NSError *error))failure;
 
 /**
  Invite a user to this room.
@@ -942,6 +984,7 @@ FOUNDATION_EXPORT NSInteger const kMXRoomAlreadyJoinedErrorCode;
  @param textMessage the text to send.
  @param formattedTextMessage the optional HTML formatted string of the text to send.
  @param stringLocalizer string localizations used when building reply message.
+ @param threadId identifier of the thread in which the reply event will reside. Pass nil to use room timeline instead.
  @param localEcho a pointer to a MXEvent object (@see sendMessageWithContent: for details).
  @param success A block object called when the operation succeeds. It returns
  the event id of the event generated on the home server
@@ -953,6 +996,7 @@ FOUNDATION_EXPORT NSInteger const kMXRoomAlreadyJoinedErrorCode;
                      withTextMessage:(NSString*)textMessage
                 formattedTextMessage:(NSString*)formattedTextMessage
                      stringLocalizer:(id<MXSendReplyEventStringLocalizerProtocol>)stringLocalizer
+                            threadId:(NSString*)threadId
                            localEcho:(MXEvent**)localEcho
                              success:(void (^)(NSString *eventId))success
                              failure:(void (^)(NSError *error))failure NS_REFINED_FOR_SWIFT;
@@ -992,6 +1036,7 @@ FOUNDATION_EXPORT NSInteger const kMXRoomAlreadyJoinedErrorCode;
                                   description:(NSString *)description
                                      threadId:(NSString*)threadId
                                     localEcho:(MXEvent **)localEcho
+                                    assetType:(MXEventAssetType)assetType
                                       success:(void (^)(NSString *))success
                                       failure:(void (^)(NSError *))failure;
 

@@ -59,6 +59,9 @@ NS_ASSUME_NONNULL_BEGIN
 /// The aliases of this room.
 @property (nonatomic, readonly) NSArray<NSString *> *aliases;
 
+/// The history visibility of the room.
+@property (nonatomic, readonly) MXRoomHistoryVisibility _Nullable historyVisibility;
+
 /// Join rule for the room.
 @property (nonatomic, readonly) MXRoomJoinRule _Nullable joinRule;
 
@@ -142,6 +145,9 @@ NS_ASSUME_NONNULL_BEGIN
 
 /// Parent space identifiers of whom the room is a descendant
 @property (nonatomic, readonly) NSSet<NSString*> *parentSpaceIds;
+
+/// User ids of users sharing active beacon in the room
+@property (nonatomic, readonly) NSSet<NSString*> *userIdsSharingLiveBeacon;
 
 #pragma mark - Optional
 

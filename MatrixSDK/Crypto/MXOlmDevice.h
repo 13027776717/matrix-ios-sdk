@@ -230,15 +230,18 @@ Determine if an incoming messages is a prekey message matching an existing sessi
  @param forwardingCurve25519KeyChain devices which forwarded this session to us (normally empty)
  @param keysClaimed Other keys the sender claims.
  @param exportFormat YES if the megolm keys are in export format (ie, they lack an ed25519 signature).
+ @param sharedHistory YES if the session was created whilst room's history was set to visible (i.e. `world_readable` or `shared`
  
  @return YES if the operation succeeds.
  */
-- (BOOL)addInboundGroupSession:(NSString*)sessionId sessionKey:(NSString*)sessionKey
+- (BOOL)addInboundGroupSession:(NSString*)sessionId
+                    sessionKey:(NSString*)sessionKey
                         roomId:(NSString*)roomId
                      senderKey:(NSString*)senderKey
   forwardingCurve25519KeyChain:(NSArray<NSString *> *)forwardingCurve25519KeyChain
                    keysClaimed:(NSDictionary<NSString*, NSString*>*)keysClaimed
-                  exportFormat:(BOOL)exportFormat;
+                  exportFormat:(BOOL)exportFormat
+                 sharedHistory:(BOOL)sharedHistory;
 
 /**
  Add previously-exported inbound group sessions to the session store.
@@ -252,6 +255,9 @@ Determine if an incoming messages is a prekey message matching an existing sessi
  Decrypt a received message with an inbound group session.
  
  @param body the base64-encoded body of the encrypted message.
+ @param isEditEvent whether the event has an edit relationship to another event.
+                    This is used when detecting a replay attack as a way to
+                    distinguish an edit of a message from the original edited message.
  @param roomId the room in which the message was received.
  @param timeline the id of the timeline where the event is decrypted. It is used
                  to prevent replay attack.
@@ -261,7 +267,9 @@ Determine if an incoming messages is a prekey message matching an existing sessi
 
  @return the decrypting result. Nil if the sessionId is unknown.
  */
-- (MXDecryptionResult*)decryptGroupMessage:(NSString*)body roomId:(NSString*)roomId
+- (MXDecryptionResult*)decryptGroupMessage:(NSString*)body
+                               isEditEvent:(BOOL)isEditEvent
+                                    roomId:(NSString*)roomId
                                 inTimeline:(NSString*)timeline
                                  sessionId:(NSString*)sessionId senderKey:(NSString*)senderKey
                                      error:(NSError** )error;

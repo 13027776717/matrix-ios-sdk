@@ -30,11 +30,17 @@ public class MXCoreDataRoomSummaryStore: NSObject {
 
     private lazy var persistenceCoordinator: NSPersistentStoreCoordinator = {
         let result = NSPersistentStoreCoordinator(managedObjectModel: Self.managedObjectModel)
+        
+        let options: [AnyHashable : Any] = [
+            NSMigratePersistentStoresAutomaticallyOption: true,
+            NSInferMappingModelAutomaticallyOption: true
+        ]
+        
         do {
             try result.addPersistentStore(ofType: NSSQLiteStoreType,
                                           configurationName: nil,
                                           at: storeURL,
-                                          options: nil)
+                                          options: options)
         } catch {
             fatalError(error.localizedDescription)
         }
@@ -174,7 +180,7 @@ public class MXCoreDataRoomSummaryStore: NSObject {
     private func saveSummary(_ summary: MXRoomSummaryProtocol) {
         let moc = backgroundMoc
         
-        moc.perform { [weak self] in
+        moc.performAndWait { [weak self] in
             guard let self = self else { return }
             if let existing = self.fetchSummaryMO(forRoomId: summary.roomId, in: moc) {
                 existing.update(withRoomSummary: summary, in: moc)
@@ -194,7 +200,7 @@ public class MXCoreDataRoomSummaryStore: NSObject {
     private func deleteSummary(forRoomId roomId: String) {
         let moc = backgroundMoc
         
-        moc.perform { [weak self] in
+        moc.performAndWait { [weak self] in
             guard let self = self else { return }
             if let existing = self.fetchSummaryMO(forRoomId: roomId, in: moc) {
                 moc.delete(existing)
@@ -214,7 +220,7 @@ public class MXCoreDataRoomSummaryStore: NSObject {
         
         let moc = backgroundMoc
         
-        moc.perform { [weak self] in
+        moc.performAndWait { [weak self] in
             guard let self = self else { return }
             do {
                 for entityName in entityNames {

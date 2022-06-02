@@ -107,8 +107,23 @@ public extension MXRestClient {
      
      - returns: a `MXHTTPOperation` instance.
      */
+    @available(*, deprecated, message: "Use isUsernameAvailable instead which calls the dedicated API and provides more information.")
     @nonobjc @discardableResult func isUserNameInUse(_ username: String, completion: @escaping (_ inUse: Bool) -> Void) -> MXHTTPOperation {
         return __isUserName(inUse: username, callback: completion)
+    }
+    
+    /**
+     Checks whether a username is available.
+     
+     - parameters:
+         - username: The user name to test.
+         - completion: A block object called when the operation is completed.
+         - response: Provides the server response as an `MXUsernameAvailability` instance.
+     
+     - returns: a `MXHTTPOperation` instance.
+     */
+    @nonobjc @discardableResult func isUsernameAvailable(_ username: String, completion: @escaping (_ response: MXResponse<MXUsernameAvailability>) -> Void) -> MXHTTPOperation {
+        return __isUsernameAvailable(username, success: currySuccess(completion), failure: curryFailure(completion))
     }
     
     /**
@@ -705,6 +720,22 @@ public extension MXRestClient {
     }
     
     /**
+     Set the join rule of a room.
+     
+     - parameters:
+        - joinRule: the rule to set.
+        - roomId: the id of the room.
+        - allowedParentIds: Optional: list of allowedParentIds (required only for `restricted` join rule as per [MSC3083](https://github.com/matrix-org/matrix-doc/pull/3083) )
+        - completion: A block object called when the operation completes.
+        - response: Indicates whether the operation was successful.
+     
+     - returns: a `MXHTTPOperation` instance.
+     */
+    @nonobjc @discardableResult func setRoomJoinRule(_ joinRule: MXRoomJoinRule, forRoomWithId roomId: String, allowedParentIds: [String]?, completion: @escaping (_ response: MXResponse<Void>) -> Void) -> MXHTTPOperation {
+        return __setRoomJoinRule(joinRule.identifier, forRoomWithId: roomId, allowedParentIds: allowedParentIds, success: currySuccess(completion), failure: curryFailure(completion))
+    }
+    
+    /**
      Get the join rule of a room.
      
      - parameters:
@@ -718,8 +749,21 @@ public extension MXRestClient {
         return __joinRule(ofRoom: roomId, success: currySuccess(transform: MXRoomJoinRule.init, completion), failure: curryFailure(completion))
     }
     
-    
-    
+    /**
+     Get the enhanced join rule of a room.
+
+     - parameters:
+        - roomId: the id of the room.
+        - completion: A block object called when the operation completes. It provides the room enhanced join rule as per [MSC3083](https://github.com/matrix-org/matrix-doc/pull/3083.
+        - response: Provides the room join rule on success.
+     
+     - returns: a `MXHTTPOperation` instance.
+     */
+    @nonobjc @discardableResult func joinRule(ofRoomWithId roomId: String, completion: @escaping (_ response: MXResponse<MXRoomJoinRuleResponse>) -> Void) -> MXHTTPOperation {
+        return __joinRuleOfRoom(withId: roomId, success: currySuccess(completion), failure: curryFailure(completion))
+    }
+
+
     
     /**
      Set the guest access of a room.
@@ -1213,6 +1257,21 @@ public extension MXRestClient {
     @nonobjc @discardableResult func roomSummary(with roomIdOrAlias: String, via: [String], completion: @escaping (_ response: MXResponse<MXPublicRoom>) -> Void) -> MXHTTPOperation {
         return __roomSummary(with: roomIdOrAlias, via: via, success: currySuccess(completion), failure: curryFailure(completion))
     }
+    
+    /**
+     Upgrade a room to a new version
+     
+     - parameters:
+        - roomId: the id of the room.
+        - roomVersion: the new room version
+        - completion: A block object called when the operation completes.
+        - response: Provides the ID of the replacement room on success.
+     
+     - returns: a `MXHTTPOperation` instance.
+     */
+    @nonobjc @discardableResult func upgradeRoom(withId roomId: String, to roomVersion: String, completion: @escaping (_ response: MXResponse<String>) -> Void) -> MXHTTPOperation {
+        return __upgradeRoom(withId: roomId, to: roomVersion, success: currySuccess(completion), failure: curryFailure(completion))
+    }
 
     // MARK: - Room tags operations
     
@@ -1621,17 +1680,17 @@ public extension MXRestClient {
     }
     
     /**
-     Get the room ID corresponding to this room alias
-     
+     Resolve given room alias to a room identifier and a list of servers aware of this identifier
+
      - parameters:
         - roomAlias: the alias of the room to look for.
         - completion: A block object called when the operation completes.
-        - response: Provides the the ID of the room on success.
-     
+        - response: Provides a resolution object containing the room ID and a list of servers
+
      - returns: a `MXHTTPOperation` instance.
      */
-    @nonobjc @discardableResult func roomId(forRoomAlias roomAlias: String, completion: @escaping (_ response: MXResponse<String>) -> Void) -> MXHTTPOperation {
-        return __roomID(forRoomAlias: roomAlias, success: currySuccess(completion), failure: curryFailure(completion))
+    @nonobjc @discardableResult func resolveRoomAlias(_ roomAlias: String, completion: @escaping (_ response: MXResponse<MXRoomAliasResolution>) -> Void) -> MXHTTPOperation {
+        return __resolveRoomAlias(roomAlias, success: currySuccess(completion), failure: curryFailure(completion))
     }
     
     // Mark: - Media Repository API
@@ -1798,7 +1857,7 @@ public extension MXRestClient {
      
      - returns: a `MXHTTPOperation` instance.
      */
-    @nonobjc @discardableResult func sendDirectToDevice(eventType: String, contentMap: MXUsersDevicesMap<NSDictionary>, txnId: String, completion: @escaping (_ response: MXResponse<Void>) -> Void) -> MXHTTPOperation {
+    @nonobjc @discardableResult func sendDirectToDevice(eventType: String, contentMap: MXUsersDevicesMap<NSDictionary>, txnId: String?, completion: @escaping (_ response: MXResponse<Void>) -> Void) -> MXHTTPOperation {
         return __send(toDevice: eventType, contentMap: contentMap, txnId: txnId, success: currySuccess(completion), failure: curryFailure(completion))
     }
     
@@ -1895,6 +1954,16 @@ public extension MXRestClient {
         return __getSpaceChildrenForSpace(withId: spaceId, suggestedOnly: suggestedOnly, limit: limit ?? -1, maxDepth: maxDepth ?? -1, paginationToken: paginationToken, success: currySuccess(completion), failure: curryFailure(completion))
     }
     
+    // MARK: - Home server capabilities
+    
+    /// Get the capabilities of the homeserver
+    /// - Parameters:
+    ///   - completion: A closure called when the operation completes.
+    /// - Returns: a `MXHTTPOperation` instance.
+    @nonobjc @discardableResult func homeServerCapabilities(completion: @escaping (_ response: MXResponse<MXHomeserverCapabilities>) -> Void) -> MXHTTPOperation {
+        return __homeServerCapabilities(success: currySuccess(completion), failure: curryFailure(completion))
+    }
+
     //  MARK: - Aggregations
     
     /// Get relations for a given event.

@@ -96,6 +96,9 @@ typedef NS_ENUM(NSInteger, MXEventType)
     MXEventTypePollStart,
     MXEventTypePollResponse,
     MXEventTypePollEnd,
+    MXEventTypeSpaceOrder,
+    MXEventTypeBeaconInfo,
+    MXEventTypeBeacon,
 
     // The event is a custom event. Refer to its `MXEventTypeString` version
     MXEventTypeCustom = 1000
@@ -130,6 +133,7 @@ FOUNDATION_EXPORT NSString *const kMXEventTypeStringRoomRedaction;
 FOUNDATION_EXPORT NSString *const kMXEventTypeStringRoomThirdPartyInvite;
 FOUNDATION_EXPORT NSString *const kMXEventTypeStringRoomRelatedGroups;
 FOUNDATION_EXPORT NSString *const kMXEventTypeStringRoomPinnedEvents;
+FOUNDATION_EXPORT NSString *const kMXEventTypeStringRoomMembership;
 FOUNDATION_EXPORT NSString *const kMXEventTypeStringRoomTag;
 FOUNDATION_EXPORT NSString *const kMXEventTypeStringPresence;
 FOUNDATION_EXPORT NSString *const kMXEventTypeStringTypingNotification;
@@ -152,6 +156,9 @@ FOUNDATION_EXPORT NSString *const kMXEventTypeStringSticker;
 FOUNDATION_EXPORT NSString *const kMXEventTypeStringRoomTombStone;
 FOUNDATION_EXPORT NSString *const kMXEventTypeStringTaggedEvents;
 FOUNDATION_EXPORT NSString *const kMXEventTypeStringSpaceChild;
+FOUNDATION_EXPORT NSString *const kMXEventTypeStringSpaceOrder;
+FOUNDATION_EXPORT NSString *const kMXEventTypeStringSpaceOrderMSC3230;
+FOUNDATION_EXPORT NSString *const kMXEventTypeStringSpaceOrderKey;
 
 // Interactive key verification
 FOUNDATION_EXPORT NSString *const kMXEventTypeStringKeyVerificationRequest;
@@ -181,6 +188,12 @@ FOUNDATION_EXPORT NSString *const kMXEventTypeStringPollResponse;
 FOUNDATION_EXPORT NSString *const kMXEventTypeStringPollEndMSC3381;
 FOUNDATION_EXPORT NSString *const kMXEventTypeStringPollEnd;
 
+// Beacon
+
+FOUNDATION_EXPORT NSString *const kMXEventTypeStringBeaconInfo;
+FOUNDATION_EXPORT NSString *const kMXEventTypeStringBeaconInfoMSC3672;
+FOUNDATION_EXPORT NSString *const kMXEventTypeStringBeacon;
+FOUNDATION_EXPORT NSString *const kMXEventTypeStringBeaconMSC3672;
 
 /**
  Types of room messages
@@ -270,12 +283,23 @@ FOUNDATION_EXPORT NSString *const kMXMessageContentKeyExtensibleLocationMSC3488;
 FOUNDATION_EXPORT NSString *const kMXMessageContentKeyExtensibleLocationURI;
 FOUNDATION_EXPORT NSString *const kMXMessageContentKeyExtensibleLocationDescription;
 
+// Beacon
+
+FOUNDATION_EXPORT NSString *const kMXMessageContentKeyExtensibleLocation;
+
 // Assets
 
 FOUNDATION_EXPORT NSString *const kMXMessageContentKeyExtensibleAsset;
 FOUNDATION_EXPORT NSString *const kMXMessageContentKeyExtensibleAssetMSC3488;
 FOUNDATION_EXPORT NSString *const kMXMessageContentKeyExtensibleAssetType;
 FOUNDATION_EXPORT NSString *const kMXMessageContentKeyExtensibleAssetTypeUser;
+FOUNDATION_EXPORT NSString *const kMXMessageContentKeyExtensibleAssetTypePin;
+
+// Join Rules
+
+FOUNDATION_EXPORT NSString *const kMXJoinRulesContentKeyAllow;
+FOUNDATION_EXPORT NSString *const kMXJoinRulesContentKeyType;
+FOUNDATION_EXPORT NSString *const kMXJoinRulesContentKeyRoomId;
 
 /**
  The internal event state used to handle the different steps of the event sending.

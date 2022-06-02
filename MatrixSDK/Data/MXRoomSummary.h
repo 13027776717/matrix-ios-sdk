@@ -187,6 +187,11 @@ FOUNDATION_EXPORT NSUInteger const MXRoomSummaryPaginationChunkSize;
 @property (nonatomic) NSArray<NSString *> *aliases;
 
 /**
+ The history visibility of the room.
+ */
+@property (nonatomic) MXRoomHistoryVisibility historyVisibility;
+
+/**
  Join rule for the room.
  */
 @property (nonatomic) MXRoomJoinRule joinRule NS_REFINED_FOR_SWIFT;
@@ -344,6 +349,9 @@ FOUNDATION_EXPORT NSUInteger const MXRoomSummaryPaginationChunkSize;
  Parent space identifiers.
  */
 @property (nonatomic) NSSet<NSString*> *parentSpaceIds;
+
+/// User ids of users sharing active beacon in the room
+@property (nonatomic) NSSet<NSString*> *userIdsSharingLiveBeacon;
 
 /**
  Mark all messages as read.

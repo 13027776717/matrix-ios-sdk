@@ -337,12 +337,14 @@
 
 
 #pragma mark - Inbound group session
-- (BOOL)addInboundGroupSession:(NSString*)sessionId sessionKey:(NSString*)sessionKey
+- (BOOL)addInboundGroupSession:(NSString*)sessionId
+                    sessionKey:(NSString*)sessionKey
                         roomId:(NSString*)roomId
                      senderKey:(NSString*)senderKey
   forwardingCurve25519KeyChain:(NSArray<NSString *> *)forwardingCurve25519KeyChain
                    keysClaimed:(NSDictionary<NSString*, NSString*>*)keysClaimed
                   exportFormat:(BOOL)exportFormat
+                 sharedHistory:(BOOL)sharedHistory;
 {
     MXOlmInboundGroupSession *session;
     if (exportFormat)
@@ -385,6 +387,12 @@
     session.roomId = roomId;
     session.keysClaimed = keysClaimed;
     session.forwardingCurve25519KeyChain = forwardingCurve25519KeyChain;
+    
+    // If we already have a session stored, the sharedHistory flag will not be overwritten
+    if (!existingSession && MXSDKOptions.sharedInstance.enableRoomSharedHistoryOnInvite)
+    {
+        session.sharedHistory = sharedHistory;
+    }
 
     [store storeInboundGroupSessions:@[session]];
 
@@ -422,6 +430,12 @@
                 MXLogDebug(@"[MXOlmDevice] importInboundGroupSessions: Skip it. The index of the incoming session is higher (%@ vs %@)", @(session.session.firstKnownIndex), @(existingSession.session.firstKnownIndex));
                 continue;
             }
+            
+            if (existingSession.sharedHistory != session.sharedHistory)
+            {
+                MXLogDebug(@"[MXOlmDevice] importInboundGroupSessions: Existing value of sharedHistory = %d is not allowed to be overriden by the updated session", existingSession.sharedHistory);
+                session.sharedHistory = existingSession.sharedHistory;
+            }
         }
 
         [sessions addObject:session];
@@ -432,9 +446,12 @@
     return sessions;
 }
 
-- (MXDecryptionResult *)decryptGroupMessage:(NSString *)body roomId:(NSString *)roomId
+- (MXDecryptionResult *)decryptGroupMessage:(NSString *)body
+                                isEditEvent:(BOOL)isEditEvent
+                                     roomId:(NSString *)roomId
                                  inTimeline:(NSString *)timeline
-                                  sessionId:(NSString *)sessionId senderKey:(NSString *)senderKey
+                                  sessionId:(NSString *)sessionId
+                                  senderKey:(NSString *)senderKey
                                       error:(NSError *__autoreleasing *)error
 {
     __block NSUInteger messageIndex;
@@ -471,7 +488,7 @@
                 inboundGroupSessionMessageIndexes[timeline] = [NSMutableDictionary dictionary];
             }
             
-            NSString *messageIndexKey = [NSString stringWithFormat:@"%@|%@|%tu", senderKey, sessionId, messageIndex];
+            NSString *messageIndexKey = [NSString stringWithFormat:@"%@|%@|%tu|%d", senderKey, sessionId, messageIndex, isEditEvent];
             if (inboundGroupSessionMessageIndexes[timeline][messageIndexKey])
             {
                 MXLogDebug(@"[MXOlmDevice] decryptGroupMessage: Warning: Possible replay attack %@", messageIndexKey);
@@ -588,12 +605,14 @@
 
         MXMegolmSessionData *sessionData = [session exportSessionDataAtMessageIndex:[messageIndex unsignedIntegerValue]];
         NSArray<NSString*> *forwardingCurve25519KeyChain = sessionData.forwardingCurve25519KeyChain;
+        BOOL sharedHistory = MXSDKOptions.sharedInstance.enableRoomSharedHistoryOnInvite && sessionData.sharedHistory;
 
         inboundGroupSessionKey = @{
                                    @"chain_index": messageIndex,
                                    @"key": sessionData.sessionKey,
                                    @"forwarding_curve25519_key_chain": forwardingCurve25519KeyChain ? forwardingCurve25519KeyChain : @[],
-                                   @"sender_claimed_ed25519_key": senderEd25519Key ? senderEd25519Key : [NSNull null]
+                                   @"sender_claimed_ed25519_key": senderEd25519Key ? senderEd25519Key : [NSNull null],
+                                   @"shared_history": @(sharedHistory)
                                    };
     }
 

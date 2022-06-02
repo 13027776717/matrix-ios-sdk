@@ -597,6 +597,34 @@ andUnauthenticatedHandler: (MXRestClientUnauthenticatedHandler)unauthenticatedHa
     }];
 }
 
+- (MXHTTPOperation*)isUsernameAvailable:(NSString*)username
+                                success:(void (^)(MXUsernameAvailability *availability))success
+                                failure:(void (^)(NSError *error))failure
+{
+    NSDictionary* parameters = @{@"username": username};
+    
+    MXWeakify(self);
+    return [httpClient requestWithMethod:@"GET"
+                                    path:[NSString stringWithFormat:@"%@/register/available", apiPathPrefix]
+                              parameters:parameters
+                                 success:^(NSDictionary *JSONResponse) {
+                                     MXStrongifyAndReturnIfNil(self);
+
+                                     if (success)
+                                     {
+                                         __block MXUsernameAvailability *availability;
+                                         [self dispatchProcessing:^{
+                                             MXJSONModelSetMXJSONModel(availability, MXUsernameAvailability, JSONResponse);
+                                         } andCompletion:^{
+                                             success(availability);
+                                         }];
+                                     }
+                                 }
+                                 failure:^(NSError *error) {
+                                     [self dispatchFailure:error inBlock:failure];
+                                 }];
+}
+
 - (MXHTTPOperation*)getRegisterSession:(void (^)(MXAuthenticationSession *authSession))success
                                failure:(void (^)(NSError *error))failure
 {
@@ -1780,8 +1808,8 @@ andUnauthenticatedHandler: (MXRestClientUnauthenticatedHandler)unauthenticatedHa
         {
             relatesDict = [NSMutableDictionary dictionary];
         }
-        relatesDict[@"rel_type"] = MXEventRelationTypeThread;
-        relatesDict[@"event_id"] = threadId;
+        relatesDict[kMXEventContentRelatesToKeyRelationType] = MXEventRelationTypeThread;
+        relatesDict[kMXEventContentRelatesToKeyEventId] = threadId;
         
         NSMutableDictionary *newContent = [NSMutableDictionary dictionaryWithDictionary:content];
         newContent[kMXEventRelationRelatesToKey] = relatesDict;
@@ -2119,10 +2147,34 @@ andUnauthenticatedHandler: (MXRestClientUnauthenticatedHandler)unauthenticatedHa
                             success:(void (^)(void))success
                             failure:(void (^)(NSError *error))failure
 {
+    return [self setRoomJoinRule:joinRule forRoomWithId:roomId allowedParentIds:nil success:success failure:failure];
+}
+
+- (MXHTTPOperation*)setRoomJoinRule:(MXRoomJoinRule)joinRule
+                      forRoomWithId:(NSString*)roomId
+                   allowedParentIds:(NSArray<NSString *> *)allowedParentIds
+                            success:(void (^)(void))success
+                            failure:(void (^)(NSError *error))failure
+{
+    NSMutableDictionary *stateValue = [[NSMutableDictionary alloc] initWithDictionary:@{
+        @"join_rule": joinRule
+    }];
+    if (allowedParentIds.count > 0)
+    {
+        NSMutableArray *allowed = [NSMutableArray new];
+        for (NSString *parentId in allowedParentIds)
+        {
+            [allowed addObject:@{
+                @"type": kMXEventTypeStringRoomMembership,
+                @"room_id": parentId
+            }];
+        }
+        
+        stateValue[@"allow"] = allowed;
+    }
+    
     return [self updateStateEvent:kMXEventTypeStringRoomJoinRules
-                        withValue:@{
-                                    @"join_rule": joinRule
-                                    }
+                        withValue:stateValue
                            inRoom:roomId
                           success:success failure:failure];
 }
@@ -2141,6 +2193,25 @@ andUnauthenticatedHandler: (MXRestClientUnauthenticatedHandler)unauthenticatedHa
                                        MXJSONModelSetString(joinRule, JSONResponse[@"join_rule"]);
                                    } andCompletion:^{
                                        success(joinRule);
+                                   }];
+                               }
+                           } failure:failure];
+}
+
+- (MXHTTPOperation*)joinRuleOfRoomWithId:(NSString*)roomId
+                                 success:(void (^)(MXRoomJoinRuleResponse *joinRule))success
+                                 failure:(void (^)(NSError *error))failure
+{
+    return [self valueOfStateEvent:kMXEventTypeStringRoomJoinRules
+                            inRoom:roomId
+                           success:^(NSDictionary *JSONResponse) {
+                               if (success)
+                               {
+                                   __block MXRoomJoinRuleResponse *response;
+                                   [self dispatchProcessing:^{
+                                       MXJSONModelSetMXJSONModel(response, MXRoomJoinRuleResponse, JSONResponse)
+                                   } andCompletion:^{
+                                       success(response);
                                    }];
                                }
                            } failure:failure];
@@ -3065,6 +3136,36 @@ andUnauthenticatedHandler: (MXRestClientUnauthenticatedHandler)unauthenticatedHa
                                  }];
 }
 
+- (MXHTTPOperation*)upgradeRoomWithId:(NSString*)roomId
+                                   to:(NSString*)roomVersion
+                              success:(void (^)(NSString *replacementRoomId))success
+                              failure:(void (^)(NSError *error))failure
+{
+    NSString *path = [NSString stringWithFormat:@"%@/rooms/%@/upgrade", apiPathPrefix, roomId];
+
+    MXWeakify(self);
+    return [httpClient requestWithMethod:@"POST"
+                                    path:path
+                              parameters:@{@"new_version": roomVersion}
+                                 success:^(NSDictionary *JSONResponse) {
+                                     MXStrongifyAndReturnIfNil(self);
+                                    __block NSString *replacementRoomId;
+                                    [self dispatchProcessing:^{
+                                        MXJSONModelSetString(replacementRoomId, JSONResponse[@"replacement_room"]);
+                                        if (!replacementRoomId.length)
+                                        {
+                                            replacementRoomId = roomId;
+                                        }
+                                    } andCompletion:^{
+                                        success(replacementRoomId);
+                                    }];
+                                 }
+                                 failure:^(NSError *error) {
+                                     MXStrongifyAndReturnIfNil(self);
+                                     [self dispatchFailure:error inBlock:failure];
+                                 }];
+}
+
 #pragma mark - Room tags operations
 - (MXHTTPOperation*)tagsOfRoom:(NSString*)roomId
                        success:(void (^)(NSArray<MXRoomTag*> *tags))success
@@ -3956,9 +4057,9 @@ andUnauthenticatedHandler: (MXRestClientUnauthenticatedHandler)unauthenticatedHa
                                  }];
 }
 
-- (MXHTTPOperation*)roomIDForRoomAlias:(NSString*)roomAlias
-                               success:(void (^)(NSString *roomId))success
-                               failure:(void (^)(NSError *error))failure
+- (MXHTTPOperation *)resolveRoomAlias:(NSString *)roomAlias
+                              success:(void (^)(MXRoomAliasResolution *))success
+                              failure:(void (^)(NSError *))failure
 {
     // Note: characters in a room alias need to be escaped in the URL
     NSString *path = [NSString stringWithFormat:@"%@/directory/room/%@",
@@ -3974,11 +4075,11 @@ andUnauthenticatedHandler: (MXRestClientUnauthenticatedHandler)unauthenticatedHa
 
                                      if (success)
                                      {
-                                         __block NSString *roomId;
+                                         __block MXRoomAliasResolution *resolution;
                                          [self dispatchProcessing:^{
-                                             MXJSONModelSetString(roomId, JSONResponse[@"room_id"]);
+                                             resolution = [MXRoomAliasResolution modelFromJSON:JSONResponse];
                                          } andCompletion:^{
-                                             success(roomId);
+                                             success(resolution);
                                          }];
                                      }
                                  }
@@ -5853,8 +5954,8 @@ andUnauthenticatedHandler: (MXRestClientUnauthenticatedHandler)unauthenticatedHa
     NSString *limitParam = limit >= 0 ? [NSString stringWithFormat:@"&limit=%ld", (long)limit] : @"";
     NSString *maxDepthParam = maxDepth >= 0 ? [NSString stringWithFormat:@"&max_depth=%ld", (long)maxDepth] : @"";
     NSString *fromParam = paginationToken != nil ? [NSString stringWithFormat:@"&from=%@", paginationToken] : @"";
-    NSString *path = [NSString stringWithFormat:@"%@/org.matrix.msc2946/rooms/%@/hierarchy?suggested_only=%@%@%@%@",
-                      kMXAPIPrefixPathUnstable, spaceId, suggestedOnly ? @"true": @"false", limitParam, maxDepthParam, fromParam];
+    NSString *path = [NSString stringWithFormat:@"%@/rooms/%@/hierarchy?suggested_only=%@%@%@%@",
+                      kMXAPIPrefixPathV1, spaceId, suggestedOnly ? @"true": @"false", limitParam, maxDepthParam, fromParam];
     
     MXWeakify(self);
     return [httpClient requestWithMethod:@"GET"
@@ -5878,5 +5979,36 @@ andUnauthenticatedHandler: (MXRestClientUnauthenticatedHandler)unauthenticatedHa
                                      [self dispatchFailure:error inBlock:failure];
                                  }];
 }
+
+#pragma mark - Homeserver capabilities
+
+- (MXHTTPOperation*)homeServerCapabilitiesWithSuccess:(void (^)(MXHomeserverCapabilities *capabilities))success
+                                              failure:(void (^)(NSError *error))failure
+{
+    NSString *path = [NSString stringWithFormat:@"%@/capabilities", kMXAPIPrefixPathR0];
+
+    MXWeakify(self);
+    return [httpClient requestWithMethod:@"GET"
+                                    path:path
+                              parameters:@{}
+                                 success:^(NSDictionary *JSONResponse) {
+                                     MXStrongifyAndReturnIfNil(self);
+
+                                     if (success)
+                                     {
+                                         __block MXHomeserverCapabilities *capabilities;
+                                         [self dispatchProcessing:^{
+                                             MXJSONModelSetMXJSONModel(capabilities, MXHomeserverCapabilities, JSONResponse);
+                                         } andCompletion:^{
+                                             success(capabilities);
+                                         }];
+                                     }
+                                 }
+                                 failure:^(NSError *error) {
+                                     MXStrongifyAndReturnIfNil(self);
+                                     [self dispatchFailure:error inBlock:failure];
+                                 }];
+}
+
 
 @end

@@ -40,6 +40,7 @@
 
 @synthesize storeService, eventStreamToken, userAccountData, syncFilterId, homeserverWellknown, areAllIdentityServerTermsAgreed;
 @synthesize homeserverCapabilities;
+@synthesize supportedMatrixVersions;
 
 - (instancetype)init
 {
@@ -182,6 +183,18 @@
     return roomStore.partialTextMessage;
 }
 
+- (void)storePartialAttributedTextMessageForRoom:(NSString *)roomId partialAttributedTextMessage:(NSAttributedString *)partialAttributedTextMessage
+{
+    MXMemoryRoomStore *roomStore = [self getOrCreateRoomStore:roomId];
+    roomStore.partialAttributedTextMessage = partialAttributedTextMessage;
+}
+
+- (NSAttributedString *)partialAttributedTextMessageOfRoom:(NSString *)roomId
+{
+    MXMemoryRoomStore *roomStore = [self getOrCreateRoomStore:roomId];
+    return roomStore.partialAttributedTextMessage;
+}
+
 - (void)loadReceiptsForRoom:(NSString *)roomId completion:(void (^)(void))completion
 {
     [self getOrCreateRoomReceiptsStore:roomId];
@@ -318,6 +331,11 @@
     homeserverCapabilities = capabilities;
 }
 
+- (void)storeSupportedMatrixVersions:(MXMatrixVersions *)supportedMatrixVersions
+{
+    supportedMatrixVersions = supportedMatrixVersions;
+}
+
 - (NSInteger)maxUploadSize
 {
     return self->maxUploadSize;
@@ -337,6 +355,11 @@
 - (BOOL)isPermanent
 {
     return NO;
+}
+
+- (NSArray<NSString *> *)roomIds
+{
+    return roomStores.allKeys;
 }
 
 #pragma mark - Matrix users
@@ -421,6 +444,11 @@
     }
 
     filters[filterId] = filter.jsonString;
+}
+
+- (NSArray<NSString *> *)allFilterIds
+{
+    return filters.allKeys;
 }
 
 - (void)filterWithFilterId:(nonnull NSString*)filterId

@@ -407,7 +407,7 @@ public enum MXBackgroundSyncServiceError: Error {
                     throw MXBackgroundSyncServiceError.unknown
             }
             
-            let olmResult = try olmDevice.decryptGroupMessage(ciphertext, roomId: event.roomId, inTimeline: nil, sessionId: sessionId, senderKey: senderKey)
+            let olmResult = try olmDevice.decryptGroupMessage(ciphertext, isEditEvent: event.isEdit(), roomId: event.roomId, inTimeline: nil, sessionId: sessionId, senderKey: senderKey)
             
             let decryptionResult = MXEventDecryptionResult()
             decryptionResult.clearEvent = olmResult.payload
@@ -579,13 +579,15 @@ public enum MXBackgroundSyncServiceError: Error {
             return
         }
         
+        let sharedHistory = (content[kMXSharedHistoryKeyName] as? Bool) ?? false
         olmDevice.addInboundGroupSession(sessionId,
                                          sessionKey: sessionKey,
                                          roomId: roomId,
                                          senderKey: senderKey,
                                          forwardingCurve25519KeyChain: forwardingKeyChain,
                                          keysClaimed: keysClaimed,
-                                         exportFormat: exportFormat)
+                                         exportFormat: exportFormat,
+                                         sharedHistory: sharedHistory)
     }
     
     private func updateBackgroundServiceStoresIfNeeded() {

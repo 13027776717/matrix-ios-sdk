@@ -137,6 +137,8 @@ NSCharacterSet *uriComponentCharset;
             @(MXEventTypePollStart) : kMXEventTypeStringPollStartMSC3381,
             @(MXEventTypePollResponse) : kMXEventTypeStringPollResponseMSC3381,
             @(MXEventTypePollEnd) : kMXEventTypeStringPollEndMSC3381,
+            @(MXEventTypeBeaconInfo) : kMXEventTypeStringBeaconInfoMSC3672,
+            @(MXEventTypeBeacon) : kMXEventTypeStringBeaconMSC3672
         };
 
         eventTypeMapStringToEnum = @{
@@ -208,6 +210,10 @@ NSCharacterSet *uriComponentCharset;
             kMXEventTypeStringPollResponseMSC3381 : @(MXEventTypePollResponse),
             kMXEventTypeStringPollEnd : @(MXEventTypePollEnd),
             kMXEventTypeStringPollEndMSC3381 : @(MXEventTypePollEnd),
+            kMXEventTypeStringBeaconInfoMSC3672 : @(MXEventTypeBeaconInfo),
+            kMXEventTypeStringBeaconInfo : @(MXEventTypeBeaconInfo),
+            kMXEventTypeStringBeaconMSC3672 : @(MXEventTypeBeacon),
+            kMXEventTypeStringBeacon : @(MXEventTypeBeacon)
         };
 
         isEmailAddressRegex =  [NSRegularExpression regularExpressionWithPattern:[NSString stringWithFormat:@"^%@$", kMXToolsRegexStringForEmailAddress]
@@ -517,7 +523,7 @@ NSCharacterSet *uriComponentCharset;
     return [[NSProcessInfo processInfo] globallyUniqueString];
 }
 
-+ (NSString *)generateTransactionId
++ (NSString * _Nonnull)generateTransactionId
 {
     return [NSString stringWithFormat:@"m%u.%tu", arc4random_uniform(INT32_MAX), transactionIdCount++];
 }

@@ -687,6 +687,25 @@ static NSArray<MXEventTypeString> *kMXKeyVerificationManagerVerificationEventTyp
     return operation;
 }
 
+- (void)notifyOthersOfAcceptanceWithTransactionId:(NSString*)transactionId
+                               acceptedUserId:(NSString*)acceptedUserId
+                             acceptedDeviceId:(NSString*)acceptedDeviceId
+                                      success:(void(^)(void))success
+                                      failure:(void(^)(NSError *error))failure
+{
+    [self otherDeviceIdsOfUser:acceptedUserId success:^(NSArray<NSString *> *deviceIds) {
+        NSMutableArray *nonChosenDevices = [deviceIds mutableCopy];
+        [nonChosenDevices removeObject:acceptedDeviceId];
+        
+        MXKeyVerificationCancel *cancel = [MXKeyVerificationCancel new];
+        MXTransactionCancelCode *cancelCode = MXTransactionCancelCode.accepted;
+        cancel.transactionId = transactionId;
+        cancel.code = cancelCode.value;
+        cancel.reason = cancelCode.humanReadable;
+        [self sendToDevices:acceptedUserId deviceIds:nonChosenDevices eventType:kMXEventTypeStringKeyVerificationCancel content:cancel.JSONDictionary success:success failure:failure];
+    } failure:failure];
+}
+
 - (void)cancelVerificationRequest:(MXKeyVerificationRequest*)request
                           success:(void(^)(void))success
                           failure:(void(^)(NSError *error))failure
@@ -1361,8 +1380,8 @@ static NSArray<MXEventTypeString> *kMXKeyVerificationManagerVerificationEventTyp
     NSMutableDictionary *eventContent = [content mutableCopy];
 
     eventContent[kMXEventRelationRelatesToKey] = @{
-        @"rel_type": MXEventRelationTypeReference,
-        @"event_id": relatedTo,
+        kMXEventContentRelatesToKeyRelationType: MXEventRelationTypeReference,
+        kMXEventContentRelatesToKeyEventId: relatedTo,
     };
 
     [eventContent removeObjectForKey:@"transaction_id"];

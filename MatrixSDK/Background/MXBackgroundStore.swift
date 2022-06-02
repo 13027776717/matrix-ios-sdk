@@ -165,11 +165,11 @@ class MXBackgroundStore: NSObject, MXStore {
     }
     
     func messagesEnumerator(forRoom roomId: String) -> MXEventsEnumerator {
-        return MXEventsEnumeratorOnArray(messages: [])
+        return MXEventsEnumeratorOnArray(eventIds: [], dataSource: nil)
     }
     
     func messagesEnumerator(forRoom roomId: String, withTypeIn types: [Any]?) -> MXEventsEnumerator {
-        return MXEventsEnumeratorOnArray(messages: [])
+        return MXEventsEnumeratorOnArray(eventIds: [], dataSource: nil)
     }
     
     func relations(forEvent eventId: String, inRoom roomId: String, relationType: String) -> [MXEvent] {
@@ -200,11 +200,20 @@ class MXBackgroundStore: NSObject, MXStore {
     
     func deleteGroup(_ groupId: String) {
     }
-    
+
+    @available(*, deprecated, message: "use storePartialAttributedTextMessage")
     func storePartialTextMessage(forRoom roomId: String, partialTextMessage: String) {
     }
-    
+
+    @available(*, deprecated, message: "use partialAttributedTextMessage")
     func partialTextMessage(ofRoom roomId: String) -> String? {
+        return nil
+    }
+
+    func storePartialAttributedTextMessage(forRoom roomId: String, partialAttributedTextMessage: NSAttributedString) {
+    }
+
+    func partialAttributedTextMessage(ofRoom roomId: String) -> NSAttributedString? {
         return nil
     }
     
@@ -244,6 +253,10 @@ class MXBackgroundStore: NSObject, MXStore {
     var homeserverCapabilities: MXCapabilities?
     func storeHomeserverCapabilities(_ homeserverCapabilities: MXCapabilities) {
     }
+
+    var supportedMatrixVersions: MXMatrixVersions?
+    func storeSupportedMatrixVersions(_ supportedMatrixVersions: MXMatrixVersions) {
+    }
     
     func loadRoomMessages(forRoom roomId: String, completion: (() -> Void)? = nil) {
         DispatchQueue.main.async {
@@ -269,6 +282,10 @@ class MXBackgroundStore: NSObject, MXStore {
     
     var roomSummaryStore: MXRoomSummaryStore {
         return self
+    }
+
+    var roomIds: [String] {
+        return []
     }
     
 }

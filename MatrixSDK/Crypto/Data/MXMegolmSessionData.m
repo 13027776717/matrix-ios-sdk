@@ -15,6 +15,8 @@
  */
 
 #import "MXMegolmSessionData.h"
+#import "MXSharedHistoryKeyService.h"
+#import "MXSDKOptions.h"
 
 @implementation MXMegolmSessionData
 
@@ -28,6 +30,10 @@
         MXJSONModelSetString(sessionData.roomId, JSONDictionary[@"room_id"]);
         MXJSONModelSetString(sessionData.sessionId, JSONDictionary[@"session_id"]);
         MXJSONModelSetString(sessionData.sessionKey, JSONDictionary[@"session_key"]);
+        if (MXSDKOptions.sharedInstance.enableRoomSharedHistoryOnInvite)
+        {
+            MXJSONModelSetBoolean(sessionData.sharedHistory, JSONDictionary[kMXSharedHistoryKeyName]);
+        }
         MXJSONModelSetString(sessionData.algorithm, JSONDictionary[@"algorithm"]);
         MXJSONModelSetArray(sessionData.forwardingCurve25519KeyChain, JSONDictionary[@"forwarding_curve25519_key_chain"])
     }
@@ -43,6 +49,7 @@
       @"room_id": _roomId,
       @"session_id": _sessionId,
       @"session_key":_sessionKey,
+      kMXSharedHistoryKeyName: @(_sharedHistory),
       @"algorithm": _algorithm,
       @"forwarding_curve25519_key_chain": _forwardingCurve25519KeyChain ? _forwardingCurve25519KeyChain : @[]
       };

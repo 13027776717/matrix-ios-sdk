@@ -50,6 +50,7 @@ NSString *const kMXEventTypeStringRoomRedaction         = @"m.room.redaction";
 NSString *const kMXEventTypeStringRoomThirdPartyInvite  = @"m.room.third_party_invite";
 NSString *const kMXEventTypeStringRoomRelatedGroups     = @"m.room.related_groups";
 NSString *const kMXEventTypeStringRoomPinnedEvents      = @"m.room.pinned_events";
+NSString *const kMXEventTypeStringRoomMembership        = @"m.room_membership";
 NSString *const kMXEventTypeStringRoomTag               = @"m.tag";
 NSString *const kMXEventTypeStringPresence              = @"m.presence";
 NSString *const kMXEventTypeStringTypingNotification    = @"m.typing";
@@ -83,6 +84,9 @@ NSString *const kMXEventTypeStringSecretSend            = @"m.secret.send";
 NSString *const kMXEventTypeStringSecretStorageDefaultKey   = @"m.secret_storage.default_key";
 NSString *const kMXEventTypeStringTaggedEvents          = @"m.tagged_events";
 NSString *const kMXEventTypeStringSpaceChild            = @"m.space.child";
+NSString *const kMXEventTypeStringSpaceOrder            = @"m.space_order";
+NSString *const kMXEventTypeStringSpaceOrderMSC3230     = @"org.matrix.msc3230.space_order";
+NSString *const kMXEventTypeStringSpaceOrderKey         = @"order";
 
 NSString *const kMXEventTypeStringAutoJoinKey           = @"auto_join";
 NSString *const kMXEventTypeStringSuggestedKey          = @"suggested";
@@ -93,6 +97,11 @@ NSString *const kMXEventTypeStringPollResponse        = @"m.poll.response";
 NSString *const kMXEventTypeStringPollResponseMSC3381 = @"org.matrix.msc3381.poll.response";
 NSString *const kMXEventTypeStringPollEnd             = @"m.poll.end";
 NSString *const kMXEventTypeStringPollEndMSC3381      = @"org.matrix.msc3381.poll.end";
+
+NSString *const kMXEventTypeStringBeaconInfo = @"m.beacon_info";
+NSString *const kMXEventTypeStringBeaconInfoMSC3672 = @"org.matrix.msc3672.beacon_info";
+NSString *const kMXEventTypeStringBeacon = @"m.beacon";
+NSString *const kMXEventTypeStringBeaconMSC3672 = @"org.matrix.msc3672.beacon";
 
 NSString *const kMXMessageTypeKey                    = @"msgtype";
 NSString *const kMXMessageTypeText                   = @"m.text";
@@ -116,7 +125,7 @@ NSString *const MXEventRelationTypeReplace           = @"m.replace";
 NSString *const kMXMessageContentKeyNewContent       = @"m.new_content";
 //  TODO: Replace when the MSC merged
 //  https://github.com/matrix-org/matrix-doc/pull/3440
-NSString *const MXEventRelationTypeThread            = @"io.element.thread";
+NSString *const MXEventRelationTypeThread            = @"m.thread";
 
 NSString *const kMXEventLocalEventIdPrefix           = @"kMXEventLocalId_";
 
@@ -185,6 +194,13 @@ NSString *const kMXMessageContentKeyExtensibleAsset = @"m.asset";
 NSString *const kMXMessageContentKeyExtensibleAssetMSC3488 = @"org.matrix.msc3488.asset";
 NSString *const kMXMessageContentKeyExtensibleAssetType = @"type";
 NSString *const kMXMessageContentKeyExtensibleAssetTypeUser = @"m.self";
+NSString *const kMXMessageContentKeyExtensibleAssetTypePin = @"m.pin";
+
+// Join Rules
+
+NSString *const kMXJoinRulesContentKeyAllow = @"allow";
+NSString *const kMXJoinRulesContentKeyType = @"type";
+NSString *const kMXJoinRulesContentKeyRoomId = @"room_id";
 
 #pragma mark - MXEvent
 @interface MXEvent ()
@@ -505,12 +521,7 @@ NSString *const kMXMessageContentKeyExtensibleAssetTypeUser = @"m.self";
 {
     return self.eventType == MXEventTypeRoomMessage && self.relatesTo.inReplyTo.eventId != nil &&
     //  add condition after new thread event fallbacks
-    (self.isInThread ? self.isReplyInThread : YES);
-}
-
-- (BOOL)isReplyInThread
-{
-    return [self.relatesTo.inReplyTo.renderIn containsObject:MXEventRelationTypeThread];
+    (self.isInThread ? !self.relatesTo.isReplyFallback : YES);
 }
 
 - (BOOL)isVoiceMessage
@@ -681,7 +692,7 @@ NSString *const kMXMessageContentKeyExtensibleAssetTypeUser = @"m.self";
     MXEvent *editedEvent;
     MXEvent *event = self;
     NSDictionary *newContentDict;
-    MXJSONModelSetDictionary(newContentDict, replaceEvent.content[@"m.new_content"])
+    MXJSONModelSetDictionary(newContentDict, replaceEvent.content[kMXMessageContentKeyNewContent])
     NSDictionary *oldRelatesTo = self.relatesTo.JSONDictionary;
     
     MXEventDecryptionResult *replaceEventDecryptionResult;
@@ -725,20 +736,21 @@ NSString *const kMXMessageContentKeyExtensibleAssetTypeUser = @"m.self";
         
         if (event.unsignedData.relations)
         {
-            editedEventDict[@"unsigned"][@"m.relations"][@"m.replace"] = replaceEventDict;
+            editedEventDict[@"unsigned"][@"m.relations"][MXEventRelationTypeReplace] = replaceEventDict;
         }
         else if (event.unsignedData)
         {
             editedEventDict[@"unsigned"][@"m.relations"] = @{
-                                                             @"m.replace": replaceEventDict
-                                                             };
+                MXEventRelationTypeReplace: replaceEventDict
+            };
         }
         else
         {
-            editedEventDict[@"unsigned"] = @{ @"m.relations": @{
-                                                      @"m.replace": replaceEventDict
-                                                      }
-                                              };
+            editedEventDict[@"unsigned"] = @{
+                @"m.relations": @{
+                    MXEventRelationTypeReplace: replaceEventDict
+                }
+            };
         }
         
         editedEvent = [MXEvent modelFromJSON:editedEventDict];
@@ -771,21 +783,21 @@ NSString *const kMXMessageContentKeyExtensibleAssetTypeUser = @"m.self";
     NSMutableDictionary *newEventDict = [self.JSONDictionary mutableCopy];
     if (self.unsignedData.relations)
     {
-        newEventDict[@"unsigned"][@"m.relations"][@"m.reference"] = newReferenceDict;
+        newEventDict[@"unsigned"][@"m.relations"][MXEventRelationTypeReference] = newReferenceDict;
     }
     else if (self.unsignedData)
     {
         newEventDict[@"unsigned"][@"m.relations"] = @{
-                                                         @"m.reference": newReferenceDict
-                                                         };
+            MXEventRelationTypeReference: newReferenceDict
+        };
     }
     else
     {
         newEventDict[@"unsigned"] = @{
-                                      @"m.relations": @{
-                                              @"m.reference": newReferenceDict
-                                              }
-                                      };
+            @"m.relations": @{
+                MXEventRelationTypeReference: newReferenceDict
+            }
+        };
     }
 
     newEvent = [MXEvent modelFromJSON:newEventDict];
@@ -967,13 +979,13 @@ NSString *const kMXMessageContentKeyExtensibleAssetTypeUser = @"m.self";
         MXJSONModelSetDictionary(clearEventJSON, decryptionResult.clearEvent);
         MXJSONModelSetDictionary(clearEventJSONContent, clearEventJSON[@"content"]);
 
-        if (clearEventJSONContent[@"m.new_content"] && !_wireContent[kMXEventRelationRelatesToKey])
+        if (clearEventJSONContent[kMXMessageContentKeyNewContent] && !_wireContent[kMXEventRelationRelatesToKey])
         {
             // If the event has been edited, use the new content
             // This can be done only on client side
             // TODO: Remove this with the coming update of MSC1849.
             NSDictionary *clearEventJSONNewContent;
-            MXJSONModelSetDictionary(clearEventJSONNewContent, clearEventJSONContent[@"m.new_content"]);
+            MXJSONModelSetDictionary(clearEventJSONNewContent, clearEventJSONContent[kMXMessageContentKeyNewContent]);
             
             if (clearEventJSONNewContent)
             {

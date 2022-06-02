@@ -29,7 +29,6 @@ internal class MXCoreDataRoomListDataFetcher: NSObject, MXRoomListDataFetcher {
     
     private let multicastDelegate: MXMulticastDelegate<MXRoomListDataFetcherDelegate> = MXMulticastDelegate()
     
-    private weak var session: MXSession?
     internal let fetchOptions: MXRoomListDataFetchOptions
     private lazy var dataUpdateThrottler: MXThrottler = {
         return MXThrottler(minimumDelay: 0.1, queue: .main)
@@ -114,10 +113,8 @@ internal class MXCoreDataRoomListDataFetcher: NSObject, MXRoomListDataFetcher {
         return result
     }
     
-    internal init(session: MXSession?,
-                  fetchOptions: MXRoomListDataFetchOptions,
+    internal init(fetchOptions: MXRoomListDataFetchOptions,
                   store: MXRoomSummaryCoreDataContextableStore) {
-        self.session = session
         self.fetchOptions = fetchOptions
         self.store = store
         super.init()
@@ -306,9 +303,18 @@ extension MXCoreDataRoomListDataFetcher: MXRoomListDataFilterable {
             
             //  data types
             if !filterOptions.dataTypes.isEmpty {
-                let predicate = NSPredicate(format: "(%K & %d) != 0",
+                let predicate: NSPredicate
+                if filterOptions.strictMatches {
+                    predicate = NSPredicate(format: "(%K & %d) == %d",
+                                            #keyPath(MXRoomSummaryMO.s_dataTypesInt),
+                                            filterOptions.dataTypes.rawValue,
+                                            filterOptions.dataTypes.rawValue)
+
+                } else {
+                    predicate = NSPredicate(format: "(%K & %d) != 0",
                                             #keyPath(MXRoomSummaryMO.s_dataTypesInt),
                                             filterOptions.dataTypes.rawValue)
+                }
                 predicates.append(predicate)
             }
             
@@ -404,6 +410,7 @@ private class RoomSummaryForTotalCounts: NSObject, MXRoomSummaryProtocol {
     var topic: String?
     var creatorUserId: String = ""
     var aliases: [String] = []
+    var historyVisibility: String? = nil
     var joinRule: String? = kMXRoomJoinRuleInvite
     var membership: MXMembership = .unknown
     var membershipTransitionState: MXMembershipTransitionState = .unknown
@@ -441,7 +448,8 @@ private class RoomSummaryForTotalCounts: NSObject, MXRoomSummaryProtocol {
     var sentStatus: MXRoomSummarySentStatus
     var spaceChildInfo: MXSpaceChildInfo?
     var parentSpaceIds: Set<String> = []
-
+    var userIdsSharingLiveBeacon: Set<String> = []
+    
     /// Initializer with a dictionary obtained by a fetch request, with result type `.dictionaryResultType`. Only parses some properties.
     /// - Parameter dictionary: Dictionary object representing an `MXRoomSummaryMO` instance
     init(withDictionary dictionary: [String: Any]) {

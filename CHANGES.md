@@ -1,3 +1,174 @@
+## Changes in 0.23.7 (2022-05-31)
+
+🐛 Bugfixes
+
+- MXSession: Recreate room summaries when detected missing. ([#5924](https://github.com/vector-im/element-ios/issues/5924))
+- Fixed crashes on invalid casting of MXUser to MXMyUser causing unrecognized selectors on the mxSession property. ([#6187](https://github.com/vector-im/element-ios/issues/6187))
+- MXCoreDataRoomSummaryStore: Make removing a room summary synchronous. ([#6218](https://github.com/vector-im/element-ios/issues/6218))
+
+⚠️ API Changes
+
+- MXTools: generateTransactionId no longer returns an optional in Swift. ([#1477](https://github.com/matrix-org/matrix-ios-sdk/pull/1477))
+
+🚧 In development 🚧
+
+- Location sharing: Persist beacon info summaries to disk. ([#6199](https://github.com/vector-im/element-ios/issues/6199))
+
+Others
+
+- MXFileStore: Add extra logs when saving and loading room state ([#1478](https://github.com/matrix-org/matrix-ios-sdk/pull/1478))
+- MXBackgroundSyncServiceTests: Add tests for outdated gappy syncs. ([#6142](https://github.com/vector-im/element-ios/issues/6142))
+
+
+## Changes in 0.23.6 (2022-05-19)
+
+No significant changes.
+
+
+## Changes in 0.23.5 (2022-05-18)
+
+✨ Features
+
+- Add `io.element.video` room type. ([#6149](https://github.com/vector-im/element-ios/issues/6149))
+
+🙌 Improvements
+
+- Rooms: support for attributedPartialTextMessage storage ([#3526](https://github.com/vector-im/element-ios/issues/3526))
+
+🚧 In development 🚧
+
+- MXBeaconInfoSummary: Add room id and support device id update after start location sharing. ([#5722](https://github.com/vector-im/element-ios/issues/5722))
+
+Others
+
+- Update check for server-side threads support to match spec. ([#1460](https://github.com/matrix-org/matrix-ios-sdk/pull/1460))
+
+
+## Changes in 0.23.4 (2022-05-05)
+
+🙌 Improvements
+
+- Crypto: Share Megolm session keys when inviting a new user ([#4947](https://github.com/vector-im/element-ios/issues/4947))
+- Authentication: Add MXUsernameAvailability and isUsernameAvailable method on MXRestClient. ([#5648](https://github.com/vector-im/element-ios/issues/5648))
+
+🐛 Bugfixes
+
+- MXSpaceService: added method firstRootAncestorForRoom ([#5965](https://github.com/vector-im/element-ios/issues/5965))
+- MXRoom: Update room summary after removing/refreshing unsent messages. ([#6040](https://github.com/vector-im/element-ios/issues/6040))
+
+🚧 In development 🚧
+
+- Location sharing: Handle live location beacon event. Handle beacon info + beacon data aggregation. ([#6021](https://github.com/vector-im/element-ios/issues/6021))
+- Location sharing: Handle stop live location sharing. ([#6070](https://github.com/vector-im/element-ios/issues/6070))
+- Location sharing: MXBeaconInfoSummary add isActive property. ([#6113](https://github.com/vector-im/element-ios/issues/6113))
+
+## Changes in 0.23.3 (2022-04-20)
+
+🙌 Improvements
+
+- Location sharing: Handle live location sharing start event. ([#5903](https://github.com/vector-im/element-ios/issues/5903))
+- Add a preferred presence property to MXSession ([#5995](https://github.com/vector-im/element-ios/issues/5995))
+- Pods: Upgrade JitsiMeetSDK to 5.0.2 and re-enable building for ARM64 simulator. ([#6018](https://github.com/vector-im/element-ios/issues/6018))
+
+🐛 Bugfixes
+
+- MatrixSDK: Fix some crashes after 1.8.10. ([#6023](https://github.com/vector-im/element-ios/issues/6023))
+
+Others
+
+- Fix some warnings. ([#1440](https://github.com/matrix-org/matrix-ios-sdk/pull/1440))
+
+
+## Changes in 0.23.2 (2022-04-05)
+
+🙌 Improvements
+
+- Room: Return room identifier and known servers when resolving alias ([#4858](https://github.com/vector-im/element-ios/issues/4858))
+- MXRestClient: Use the stable hierarchy endpoint from MSC2946 ([#5144](https://github.com/vector-im/element-ios/issues/5144))
+- MXPublicRoom: added implementation for JSONDictionary ([#5953](https://github.com/vector-im/element-ios/issues/5953))
+
+🐛 Bugfixes
+
+- MXEventListener/MXRoomSummary: Fix retain cycles ([#5058](https://github.com/vector-im/element-ios/issues/5058))
+- Sync Spaces order with web ([#5134](https://github.com/vector-im/element-ios/issues/5134))
+- VoIP: Recreate CXProvider if a call cannot be hung up ([#5189](https://github.com/vector-im/element-ios/issues/5189))
+- MXThreadingService: Apply edits on thread root and latest events of a thread list. ([#5845](https://github.com/vector-im/element-ios/issues/5845))
+- MXThread: Fix redacted events & fix undecrypted events. ([#5877](https://github.com/vector-im/element-ios/issues/5877))
+- Room: Do not commit to file store after typing a single character ([#5906](https://github.com/vector-im/element-ios/issues/5906))
+- Move `handleRoomKeyEvent` logic back to `MXSession`. ([#5938](https://github.com/vector-im/element-ios/issues/5938))
+- MXSuggestedRoomListDataFetcher: Spaces shouldn't be displayed as suggested rooms ([#5978](https://github.com/vector-im/element-ios/issues/5978))
+
+⚠️ API Changes
+
+- Location sharing: Add new event asset type for pin drop location sharing ([#5858](https://github.com/vector-im/element-ios/issues/5858))
+
+
+## Changes in 0.23.1 (2022-03-28)
+
+🙌 Improvements
+
+- MXRestClient: Use the stable hierarchy endpoint from MSC2946 ([#5144](https://github.com/vector-im/element-ios/issues/5144))
+
+🐛 Bugfixes
+
+- Sync Spaces order with web ([#5134](https://github.com/vector-im/element-ios/issues/5134))
+
+
+## Changes in 0.23.0 (2022-03-22)
+
+✨ Features
+
+- MXSpace: added canAddRoom() method ([#5230](https://github.com/vector-im/element-ios/issues/5230))
+- MXRoomAliasAvailabilityChecker: added extractLocalAliasPart() ([#5233](https://github.com/vector-im/element-ios/issues/5233))
+
+🙌 Improvements
+
+- Space creation: Added home server capabilities, room alias validator, restricted join rule, refined space related API, and added tests ([#5224](https://github.com/vector-im/element-ios/issues/5224))
+- Added room upgrade API call and the ability to (un)suggest a room for a space ([#5231](https://github.com/vector-im/element-ios/issues/5231))
+- MXSpaceService: added `spaceSummaries` property ([#5401](https://github.com/vector-im/element-ios/issues/5401))
+- Threads: Fix deleted thread root & decrypt thread list. ([#5441](https://github.com/vector-im/element-ios/issues/5441))
+- Threads: Replace property for in-thread replies. ([#5704](https://github.com/vector-im/element-ios/issues/5704))
+- MXRoomEventFilter: Update property names for relation types and senders. ([#5705](https://github.com/vector-im/element-ios/issues/5705))
+- MXThreadingService: Use versions instead of capabilities to check threads server support. ([#5744](https://github.com/vector-im/element-ios/issues/5744))
+- MXEventContentRelatesTo: Update reply fallback property name and reverse the logic. ([#5790](https://github.com/vector-im/element-ios/issues/5790))
+- Threads: Update all properties to stable values. ([#5791](https://github.com/vector-im/element-ios/issues/5791))
+- Room: API to ignore the sender of a room invite before the room is joined ([#5807](https://github.com/vector-im/element-ios/issues/5807))
+- MXRoom: Do not try to guess threadId for replies, get that as a parameter. ([#5829](https://github.com/vector-im/element-ios/issues/5829))
+- MXThreadingService: Fix number of replies & notification/highlight counts for threads. ([#5843](https://github.com/vector-im/element-ios/issues/5843))
+
+🐛 Bugfixes
+
+- MXThreadEventTimeline: Decrypt events fetched from server. ([#5749](https://github.com/vector-im/element-ios/issues/5749))
+- MXRoom: Fix retain cycles, in particular between MXRoomOperation and its block. ([#5805](https://github.com/vector-im/element-ios/issues/5805))
+- Timeline: Prevent skipping an item between each pagination batch ([#5819](https://github.com/vector-im/element-ios/issues/5819))
+- Crypto: Distinguish between original and edit message when preventing replay attacks ([#5835](https://github.com/vector-im/element-ios/issues/5835))
+- MXThreadEventTimeline: Fix processing order of thread events & fix empty thread screen issue. ([#5840](https://github.com/vector-im/element-ios/issues/5840))
+- Timeline: Paginated events always show the most recent edit ([#5848](https://github.com/vector-im/element-ios/issues/5848))
+- MXFileStore: Log when filters cannot be saved or loaded ([#5873](https://github.com/vector-im/element-ios/issues/5873))
+
+
+## Changes in 0.22.6 (2022-03-14)
+
+🙌 Improvements
+
+- Room: API to ignore the sender of a room invite before the room is joined ([#5807](https://github.com/vector-im/element-ios/issues/5807))
+
+
+## Changes in 0.22.5 (2022-03-08)
+
+🙌 Improvements
+
+- Room data filters: strict matches support ([#1379](https://github.com/matrix-org/matrix-ios-sdk/pull/1379))
+- Analytics: Add event composition tracking and isSpace for joined room events. ([#5365](https://github.com/vector-im/element-ios/issues/5365))
+- MXEvent+Extensions: Do not highlight any event that the current user sent. ([#5552](https://github.com/vector-im/element-ios/issues/5552))
+
+🐛 Bugfixes
+
+- Room: fix crash on members count not being always properly set ([#4949](https://github.com/vector-im/element-ios/issues/4949))
+- MXSuggestedRoomListDataFetcher: hide suggested rooms that a user is already part of ([#5276](https://github.com/vector-im/element-ios/issues/5276))
+- MXFileStore: Do not reuse room files if the room is marked for deletion ([#5717](https://github.com/vector-im/element-ios/issues/5717))
+
+
 ## Changes in 0.22.4 (2022-02-25)
 
 🙌 Improvements

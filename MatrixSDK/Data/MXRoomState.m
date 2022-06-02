@@ -77,7 +77,9 @@
         
         stateEvents = [NSMutableDictionary dictionary];
         _members = [[MXRoomMembers alloc] initWithRoomState:self andMatrixSession:mxSession];
-        _membersCount = [MXRoomMembersCount new];
+        _membersCount = [[MXRoomMembersCount alloc] initWithMembers:_members.members.count
+                                                             joined:_members.joinedMembers.count
+                                                            invited:[_members membersWithMembership:MXMembershipInvite].count];
         roomAliases = [NSMutableDictionary dictionary];
         thirdPartyInvites = [NSMutableDictionary dictionary];
         membersWithThirdPartyInviteTokenCache = [NSMutableDictionary dictionary];
@@ -395,6 +397,25 @@
     }
     
     return roomTombStoneContent;
+}
+
+- (NSArray<MXBeaconInfo*>*)beaconInfos
+{
+    NSMutableArray *beaconInfoEvents = [NSMutableArray new];
+    
+    NSArray *stateEvents = [self stateEventsWithType:kMXEventTypeStringBeaconInfoMSC3672];
+    
+    for (MXEvent *event in stateEvents)
+    {
+        MXBeaconInfo *beaconInfo = [[MXBeaconInfo alloc] initWithMXEvent:event];
+        
+        if (beaconInfo)
+        {
+            [beaconInfoEvents addObject:beaconInfo];
+        }
+    }
+    
+    return beaconInfoEvents;
 }
 
 #pragma mark - State events handling
