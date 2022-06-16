@@ -37,7 +37,7 @@
         <attribute name="s_localUnreadEventCount" optional="YES" attributeType="Integer 16" defaultValueString="0" usesScalarValueType="YES"/>
         <attribute name="s_membershipInt" attributeType="Integer 16" defaultValueString="0" usesScalarValueType="YES"/>
         <attribute name="s_membershipTransitionStateInt" attributeType="Integer 16" defaultValueString="0" usesScalarValueType="YES"/>
-        <attribute name="s_notificationCount" attributeType="Integer 16" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="s_notificationCount" attributeType="Integer 32" defaultValueString="0" usesScalarValueType="YES"/>
         <attribute name="s_others" optional="YES" attributeType="Binary"/>
         <attribute name="s_parentSpaceIds" optional="YES" attributeType="String"/>
         <attribute name="s_sentStatusInt" attributeType="Integer 16" defaultValueString="0" usesScalarValueType="YES"/>
