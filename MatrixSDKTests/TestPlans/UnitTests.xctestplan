@@ -38,6 +38,7 @@
         "MXBeaconInfoUnitTests",
         "MXCoreDataRoomListDataManagerUnitTests",
         "MXCredentialsUnitTests",
+        "MXCryptoRequestsUnitTests",
         "MXDeviceListOperationsPoolUnitTests",
         "MXErrorUnitTests",
         "MXEventAnnotationUnitTests",
@@ -60,12 +61,14 @@
         "MXQRCodeDataUnitTests",
         "MXReplyEventParserUnitTests",
         "MXResponseUnitTests",
+        "MXRoomStateUnitTests",
         "MXSharedHistoryKeyManagerUnitTests",
         "MXStoreRoomListDataManagerUnitTests",
         "MXSyncResponseUnitTests",
         "MXThreadEventTimelineUnitTests",
         "MXThreadingServiceUnitTests",
-        "MXToolsUnitTests"
+        "MXToolsUnitTests",
+        "MXTaskQueueUnitTests",
       ],
       "target" : {
         "containerPath" : "container:MatrixSDK.xcodeproj",

@@ -51,6 +51,7 @@ NSString *const kMXAccountDataTypeDirect = @"m.direct";
 NSString *const kMXAccountDataTypeUserWidgets = @"m.widgets";
 NSString *const kMXAccountDataTypeIdentityServer = @"m.identity_server";
 NSString *const kMXAccountDataTypeAcceptedTerms = @"m.accepted_terms";
+NSString *const kMXAccountDataTypeBreadcrumbs = @"im.vector.setting.breadcrumbs";
 
 /**
  Account data keys
@@ -58,6 +59,7 @@ NSString *const kMXAccountDataTypeAcceptedTerms = @"m.accepted_terms";
 NSString *const kMXAccountDataKeyIgnoredUser = @"ignored_users";
 NSString *const kMXAccountDataKeyIdentityServer = @"base_url";
 NSString *const kMXAccountDataTypeAcceptedTermsKey = @"accepted";
+NSString *const kMXAccountDataTypeRecentRoomsKey = @"recent_rooms";
 
 /**
  Types of third party media.
@@ -65,6 +67,11 @@ NSString *const kMXAccountDataTypeAcceptedTermsKey = @"accepted";
  */
 NSString *const kMX3PIDMediumEmail  = @"email";
 NSString *const kMX3PIDMediumMSISDN = @"msisdn";
+
+// Room creation dictionary key for third party id invites.
+NSString *const kMXInvite3PIDKey = @"invite_3pid";
+// Third party id invite key for access token.
+NSString *const kMX3PIDAccessTokenKey = @"id_access_token";
 
 /**
  MXRestClient error domain
@@ -266,9 +273,11 @@ andUnauthenticatedHandler: (MXRestClientUnauthenticatedHandler)unauthenticatedHa
                         dispatch_async(self.completionQueue, ^{
                             BOOL isSoftLogout = [MXRestClient isSoftLogout:mxError];
                             MXLogDebug(@"[MXRestClient] tokenProviderHandler: %@: non-refresh(access token) token auth failed", logId);
-                            self.unauthenticatedHandler(mxError, isSoftLogout, NO, ^{
-                                failure(error);
-                            });
+                            if (unauthenticatedHandler) {
+                                self.unauthenticatedHandler(mxError, isSoftLogout, NO, ^{
+                                    failure(error);
+                                });
+                            }
                         });
                         return;
                     }
@@ -276,9 +285,11 @@ andUnauthenticatedHandler: (MXRestClientUnauthenticatedHandler)unauthenticatedHa
                         // If it's non-refresh token auth return the access token,
                         // or if it is refresh token auth and access token is valid also return it.
                         MXLogDebug(@"[MXRestClient] tokenProviderHandler: %@ success token %@, %tu", logId, self.credentials.refreshToken, (NSUInteger)self.credentials.accessTokenExpiresAt)
-                        dispatch_async(self.completionQueue, ^{
-                            success(self.credentials.accessToken);
-                        });
+                        if (self.completionQueue) {
+                            dispatch_async(self.completionQueue, ^{
+                                success(self.credentials.accessToken);
+                            });
+                        }
                         return;
                     }
                     
@@ -920,7 +931,9 @@ andUnauthenticatedHandler: (MXRestClientUnauthenticatedHandler)unauthenticatedHa
                                  }];
 }
 
-- (MXHTTPOperation*)changePassword:(NSString*)oldPassword with:(NSString*)newPassword
+- (MXHTTPOperation*)changePassword:(NSString*)oldPassword
+                              with:(NSString*)newPassword
+                     logoutDevices:(BOOL)logoutDevices
                            success:(void (^)(void))success
                            failure:(void (^)(NSError *error))failure
 {
@@ -939,7 +952,8 @@ andUnauthenticatedHandler: (MXRestClientUnauthenticatedHandler)unauthenticatedHa
                                              @"user": self.credentials.userId,
                                              @"password": oldPassword,
                                            },
-                                 @"new_password": newPassword
+                                 @"new_password": newPassword,
+                                 @"logout_devices": @(logoutDevices)
                                  };
 
     MXWeakify(self);
@@ -1400,9 +1414,67 @@ andUnauthenticatedHandler: (MXRestClientUnauthenticatedHandler)unauthenticatedHa
                                                success:(void (^)(NSDictionary *updatedParameters))success
                                                failure:(void (^)(NSError *error))failure
 {
+    MXHTTPOperation *operation = [self getIdentityAccessTokenIfNecessary:^(NSString * _Nullable accessToken) {
+        if (accessToken)
+        {
+            NSMutableDictionary *updatedParameters = [NSMutableDictionary dictionaryWithDictionary:parameters];
+            updatedParameters[kMX3PIDAccessTokenKey] = accessToken;
+            
+            success(updatedParameters);
+        }
+        else
+        {
+            success(parameters);
+        }
+        
+    } failure:failure];
+
+    return operation;
+}
+
+// Add the "id_access_token" parameter to all invites if the HS requires it.
+- (MXHTTPOperation*)addIdentityAccessTokenToInvite3PIDArray:(NSArray<NSDictionary *> *)invite3PIDArray
+                                                    success:(void (^)(NSArray<NSDictionary *> *updatedArray))success
+                                                    failure:(void (^)(NSError *error))failure
+{
+    MXHTTPOperation *operation = [self getIdentityAccessTokenIfNecessary:^(NSString * _Nullable accessToken) {
+        if (accessToken)
+        {
+            NSMutableArray *updatedArray = [NSMutableArray arrayWithCapacity:invite3PIDArray.count];
+            for (NSDictionary *invite in invite3PIDArray)
+            {
+                NSMutableDictionary *updatedInvite = [NSMutableDictionary dictionaryWithDictionary:invite];
+                updatedInvite[kMX3PIDAccessTokenKey] = accessToken;
+                
+                [updatedArray addObject:updatedInvite];
+            }
+            
+            success(updatedArray);
+        }
+        else
+        {
+            success(invite3PIDArray);
+        }
+        
+    } failure:failure];
+    
+    return operation;
+}
+
+/**
+ Gets the identity access token from the handler if available and the HS requires it.
+ 
+ @param success A block called when the access token was retrieved, or when no access token is required.
+ @param failure A block called when an error occurs.
+ */
+- (MXHTTPOperation*)getIdentityAccessTokenIfNecessary:(void (^)(NSString * _Nullable accessToken))success
+                                              failure:(void (^)(NSError *error))failure
+{
     MXHTTPOperation *operation;
 
+    MXWeakify(self);
     operation = [self supportedMatrixVersions:^(MXMatrixVersions *matrixVersions) {
+        MXStrongifyAndReturnIfNil(self);
 
         MXHTTPOperation *operation2;
         if (matrixVersions.doesServerAcceptIdentityAccessToken)
@@ -1412,13 +1484,10 @@ andUnauthenticatedHandler: (MXRestClientUnauthenticatedHandler)unauthenticatedHa
                 MXWeakify(self);
                 operation2 = self.identityServerAccessTokenHandler(^(NSString *accessToken) {
                     MXStrongifyAndReturnIfNil(self);
-
+                    
                     if (accessToken)
                     {
-                        NSMutableDictionary *updatedParameters = [NSMutableDictionary dictionaryWithDictionary:parameters];
-                        updatedParameters[@"id_access_token"] = accessToken;
-
-                        success(updatedParameters);
+                        success(accessToken);
                     }
                     else
                     {
@@ -1426,7 +1495,7 @@ andUnauthenticatedHandler: (MXRestClientUnauthenticatedHandler)unauthenticatedHa
                         NSError *error = [NSError errorWithDomain:kMXRestClientErrorDomain code:MXRestClientErrorMissingIdentityServerAccessToken userInfo:nil];
                         [self dispatchFailure:error inBlock:failure];
                     }
-
+                    
                 }, ^(NSError *error) {
                     failure(error);
                 });
@@ -1440,7 +1509,7 @@ andUnauthenticatedHandler: (MXRestClientUnauthenticatedHandler)unauthenticatedHa
         }
         else
         {
-            success(parameters);
+            success(nil);
         }
         
         [operation mutateTo:operation2];
@@ -2403,6 +2472,11 @@ andUnauthenticatedHandler: (MXRestClientUnauthenticatedHandler)unauthenticatedHa
                        @"third_party_signed":thirdPartySigned
                        };
     }
+    else
+    {
+        // A body is required even if empty
+        parameters = @{};
+    }
 
     // Characters in a room alias need to be escaped in the URL
     NSString *path = [NSString stringWithFormat:@"%@/join/%@",
@@ -2412,22 +2486,14 @@ andUnauthenticatedHandler: (MXRestClientUnauthenticatedHandler)unauthenticatedHa
     // Add all servers as query parameters
     if (viaServers.count)
     {
-        NSMutableString *queryParameters;
+        NSMutableArray<NSString *> *queryParameters = [NSMutableArray new];
         for (NSString *viaServer in viaServers)
         {
             NSString *value = [MXTools encodeURIComponent:viaServer];
-
-            if (!queryParameters)
-            {
-                queryParameters = [NSMutableString stringWithFormat:@"?server_name=%@", value];
-            }
-            else
-            {
-                [queryParameters appendFormat:@"&server_name=%@", value];
-            }
+            [queryParameters addObject:[NSString stringWithFormat:@"server_name=%@", value]];
         }
 
-        path = [path stringByAppendingString:queryParameters];
+        path = [MXTools urlStringWithBase:path queryParameters:queryParameters];
     }
 
     MXWeakify(self);
@@ -2524,7 +2590,7 @@ andUnauthenticatedHandler: (MXRestClientUnauthenticatedHandler)unauthenticatedHa
     operation = [self addIdentityAccessTokenToParameters:parameters success:^(NSDictionary *updatedParameters) {
         MXStrongifyAndReturnIfNil(self);
 
-        MXHTTPOperation *operation2 = [self inviteByThreePidToRoom:roomId parameters:parameters success:success failure:failure];
+        MXHTTPOperation *operation2 = [self inviteByThreePidToRoom:roomId parameters:updatedParameters success:success failure:failure];
         
         [operation mutateTo:operation2];
 
@@ -2656,7 +2722,26 @@ andUnauthenticatedHandler: (MXRestClientUnauthenticatedHandler)unauthenticatedHa
                                      success:(void (^)(MXCreateRoomResponse *response))success
                                      failure:(void (^)(NSError *error))failure
 {
-    return [self createRoom:parameters.JSONDictionary success:success failure:failure];
+    MXHTTPOperation *operation;
+    
+    NSMutableDictionary *jsonDictionary = [NSMutableDictionary dictionaryWithDictionary:parameters.JSONDictionary];
+    NSArray<NSDictionary *> *invite3PIDArray = jsonDictionary[kMXInvite3PIDKey];
+    if (invite3PIDArray && invite3PIDArray.count)
+    {
+        MXWeakify(self);
+        operation = [self addIdentityAccessTokenToInvite3PIDArray:invite3PIDArray success:^(NSArray<NSDictionary *> *updatedArray) {
+            MXStrongifyAndReturnIfNil(self);
+            
+            jsonDictionary[kMXInvite3PIDKey] = updatedArray;
+            MXHTTPOperation *operation2 = [self createRoom:jsonDictionary success:success failure:failure];
+            [operation mutateTo:operation2];
+            
+        } failure:failure];
+    } else {
+        operation = [self createRoom:jsonDictionary success:success failure:failure];
+    }
+
+    return operation;
 }
 
 - (MXHTTPOperation*)createRoom:(NSDictionary*)parameters
@@ -2780,7 +2865,7 @@ andUnauthenticatedHandler: (MXRestClientUnauthenticatedHandler)unauthenticatedHa
 }
 
 - (MXHTTPOperation*)stateOfRoom:(NSString*)roomId
-                        success:(void (^)(NSDictionary *JSONData))success
+                        success:(void (^)(NSArray *JSONData))success
                         failure:(void (^)(NSError *error))failure
 {
     NSString *path = [NSString stringWithFormat:@"%@/rooms/%@/state", apiPathPrefix, roomId];
@@ -2789,7 +2874,7 @@ andUnauthenticatedHandler: (MXRestClientUnauthenticatedHandler)unauthenticatedHa
     return [httpClient requestWithMethod:@"GET"
                                     path:path
                               parameters:nil
-                                 success:^(NSDictionary *JSONResponse) {
+                                 success:^(id JSONResponse) {
                                      MXStrongifyAndReturnIfNil(self);
 
                                      if (success)

@@ -1,3 +1,134 @@
+## Changes in 0.23.15 (2022-08-10)
+
+🐛 Bugfixes
+
+- MXSpaceService: Fix a crash on Synapse 1.65 following changes to the /hierarchy API. ([#6547](https://github.com/vector-im/element-ios/issues/6547))
+
+
+## Changes in 0.23.14 (2022-08-09)
+
+🙌 Improvements
+
+- CI: Enable integration tests on GitHub actions ([#1537](https://github.com/matrix-org/matrix-ios-sdk/pull/1537))
+- App Layout: Added breadcrumbs data fetcher and updated room summary data type to reflect new needs ([#6407](https://github.com/vector-im/element-ios/issues/6407))
+- App Layout: added MXSpace.minimumPowerLevelForAddingRoom() and MXSpaceService.rootSpaces ([#6410](https://github.com/vector-im/element-ios/issues/6410))
+
+🐛 Bugfixes
+
+- MXRestClient: Send an empty dictionary when calling /join to be spec compliant. ([#6481](https://github.com/vector-im/element-ios/issues/6481))
+- App Layout: exclude room summaries without notifications from unread list ([#6511](https://github.com/vector-im/element-ios/issues/6511))
+
+
+## Changes in 0.23.13 (2022-07-26)
+
+🙌 Improvements
+
+- MXRoom: Support reply to beacon info event. ([#6423](https://github.com/vector-im/element-ios/issues/6423))
+- MXBeaconAggregations: Handle beacon info redaction. ([#6470](https://github.com/vector-im/element-ios/issues/6470))
+
+🐛 Bugfixes
+
+- Fix formatted_body content for unformatted events ([#6446](https://github.com/vector-im/element-ios/issues/6446))
+
+🧱 Build
+
+- Disable nightly tests for now as they're always timing out. ([#1523](https://github.com/matrix-org/matrix-ios-sdk/pull/1523))
+
+Others
+
+- Reduce project warnings ([#1527](https://github.com/matrix-org/matrix-ios-sdk/pull/1527))
+- Crypto: Convert verification request and transaction to protocols ([#1528](https://github.com/matrix-org/matrix-ios-sdk/pull/1528))
+
+
+## Changes in 0.23.12 (2022-07-13)
+
+🐛 Bugfixes
+
+- Fix JingleCallStack UI threading crashes ([#6415](https://github.com/vector-im/element-ios/issues/6415))
+
+
+## Changes in 0.23.11 (2022-07-12)
+
+✨ Features
+
+- Analytics: Track non-fatal issues if consent provided ([#1503](https://github.com/matrix-org/matrix-ios-sdk/pull/1503))
+- Crypto: Integrate Rust-based OlmMachine to encrypt / decrypt messages ([#6357](https://github.com/vector-im/element-ios/issues/6357))
+
+🙌 Improvements
+
+- Include ID server access token when making a 3pid invite (and creating a room). ([#6385](https://github.com/vector-im/element-ios/issues/6385))
+
+🐛 Bugfixes
+
+- MXiOSAudioOutputRouter: fixed issue that prevents the system to properly switch from built-in to bluetooth output. ([#5368](https://github.com/vector-im/element-ios/issues/5368))
+- Fix MXCall answer not being sent to server in some cases ([#6359](https://github.com/vector-im/element-ios/issues/6359))
+
+Others
+
+- Integration tests should wait until the room is ready ([#1516](https://github.com/matrix-org/matrix-ios-sdk/pull/1516))
+- Analytics: Log errors with details in analytics ([#1517](https://github.com/matrix-org/matrix-ios-sdk/pull/1517))
+- Secret Storage: Detect multiple valid SSSS keys ([#4569](https://github.com/vector-im/element-ios/issues/4569))
+
+
+## Changes in 0.23.10 (2022-06-28)
+
+✨ Features
+
+- Add missing "user_busy" MXCallHangupEvent ([#1342](https://github.com/vector-im/element-ios/issues/1342))
+
+🐛 Bugfixes
+
+- Handle empty pagination end token on timeline end reached ([#6347](https://github.com/vector-im/element-ios/issues/6347))
+
+⚠️ API Changes
+
+- Drop support for iOS 10 and 32-bit architectures ([#1501](https://github.com/matrix-org/matrix-ios-sdk/pull/1501))
+
+🧱 Build
+
+- CI: Add concurrency to GitHub Actions. ([#5039](https://github.com/vector-im/element-ios/issues/5039))
+- Add Codecov for unit tests coverage. ([#6306](https://github.com/vector-im/element-ios/issues/6306))
+
+Others
+
+- Crypto: Subclass MXCrypto to enable work-in-progress Rust sdk ([#1496](https://github.com/matrix-org/matrix-ios-sdk/pull/1496))
+- MXBackgroundSyncService - Expose separate method for fetching a particular room's read marker event without causing extra syncs. ([#1500](https://github.com/matrix-org/matrix-ios-sdk/pull/1500))
+- Crypto: Integrate new Rust-based MatrixSDKCrypto framework for DEBUG builds ([#1501](https://github.com/matrix-org/matrix-ios-sdk/pull/1501))
+
+
+## Changes in 0.23.9 (2022-06-14)
+
+🐛 Bugfixes
+
+- Fix a crash on start if the user has a very large number of unread events in a room ([#1490](https://github.com/matrix-org/matrix-ios-sdk/pull/1490))
+- Prevent invalid room names on member count underflows. ([#6227](https://github.com/vector-im/element-ios/issues/6227))
+- Location sharing: Fix geo URI parsing with altitude component. ([#6247](https://github.com/vector-im/element-ios/issues/6247))
+
+⚠️ API Changes
+
+- MXRestClient: Add `logoutDevices` parameter to `changePassword` method. ([#6175](https://github.com/vector-im/element-ios/issues/6175))
+- Mark MXRestClient init as `required` for mocking. ([#6179](https://github.com/vector-im/element-ios/issues/6179))
+
+
+## Changes in 0.23.8 (2022-06-03)
+
+🐛 Bugfixes
+
+- Room state: Reload room state if detected empty on disk ([#1483](https://github.com/matrix-org/matrix-ios-sdk/pull/1483))
+- Remove unwanted parts from replies new_content body/formatted_body ([#3517](https://github.com/vector-im/element-ios/issues/3517))
+- MXBackgroundStore: Avoid clearing file store if event stream token is missing. ([#5924](https://github.com/vector-im/element-ios/issues/5924))
+- MXRestClient: limit the query length to 2048 for joinRoom ([#6224](https://github.com/vector-im/element-ios/issues/6224))
+- Bump realm to 10.27.0 to fix crypto performance issue. ([#6239](https://github.com/vector-im/element-ios/issues/6239))
+
+🚧 In development 🚧
+
+- Location sharing: Authorize only one live beacon info per member and per room. ([#6100](https://github.com/vector-im/element-ios/issues/6100))
+
+Others
+
+- Crypto: Add more logs when encrypting messages ([#1476](https://github.com/matrix-org/matrix-ios-sdk/pull/1476))
+
+
 ## Changes in 0.23.7 (2022-05-31)
 
 🐛 Bugfixes

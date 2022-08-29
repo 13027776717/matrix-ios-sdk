@@ -46,6 +46,8 @@ NSString *const kMXRoomInitialSyncNotification = @"kMXRoomInitialSyncNotificatio
 NSInteger const kMXRoomAlreadyJoinedErrorCode = 9001;
 NSInteger const kMXRoomInvalidInviteSenderErrorCode = 9002;
 
+#warning File has not been annotated with nullability, see MX_ASSUME_MISSING_NULLABILITY_BEGIN
+
 @interface MXRoom ()
 {
     /**
@@ -548,6 +550,8 @@ NSInteger const kMXRoomInvalidInviteSenderErrorCode = 9002;
                             success:(void (^)(NSString *eventId))success
                             failure:(void (^)(NSError *error))failure
 {
+    
+    MXLogDebug(@"[MXRoom] sendEventOfType: %@ in room %@", eventTypeString, self.roomId);
 
     __block MXRoomOperation *roomOperation;
 
@@ -611,16 +615,15 @@ NSInteger const kMXRoomInvalidInviteSenderErrorCode = 9002;
         [self handleNextOperationAfter:roomOperation];
     };
     
-    [self checkEncryptionState];
-
-    // Check whether the content must be encrypted before sending
-    if (mxSession.crypto
-        && self.summary.isEncrypted
-        && [self isEncryptionRequiredForEventType:eventTypeString])
+    if ([self shouldEncryptEventOfType:eventTypeString])
     {
+        MXLogDebug(@"[MXRoom] sendEventOfType(MXCrypto): Processing as encrypted event");
+        
         // Check whether the provided content is already encrypted
         if ([eventTypeString isEqualToString:kMXEventTypeStringRoomEncrypted])
         {
+            MXLogDebug(@"[MXRoom] sendEventOfType(MXCrypto): Event already encrypted");
+            
             // We handle here the case where we have to resent an encrypted message event.
             if (event)
             {
@@ -763,6 +766,8 @@ NSInteger const kMXRoomInvalidInviteSenderErrorCode = 9002;
     }
     else
     {
+        MXLogDebug(@"[MXRoom] sendEventOfType: Processing as unencrypted event");
+        
         // Check whether a local echo is required
         if ([eventTypeString isEqualToString:kMXEventTypeStringRoomMessage]
             || [eventTypeString isEqualToString:kMXEventTypeStringSticker])
@@ -1006,7 +1011,7 @@ NSInteger const kMXRoomInvalidInviteSenderErrorCode = 9002;
 {
     __block MXRoomOperation *roomOperation;
     
-    [self checkEncryptionState];
+    [self validateEncryptionStateConsistency];
 
     double endRange = 1.0;
     
@@ -1271,7 +1276,7 @@ NSInteger const kMXRoomInvalidInviteSenderErrorCode = 9002;
     NSData *videoThumbnailData = [newRep representationUsingType:NSJPEGFileType properties: @{NSImageCompressionFactor: @0.8}];
 #endif
     
-    [self checkEncryptionState];
+    [self validateEncryptionStateConsistency];
     
     // Use the uploader id as fake URL for this image data
     // The URL does not need to be valid as the MediaManager will get the data
@@ -1622,7 +1627,7 @@ NSInteger const kMXRoomInvalidInviteSenderErrorCode = 9002;
 {
     __block MXRoomOperation *roomOperation;
     
-    [self checkEncryptionState];
+    [self validateEncryptionStateConsistency];
     
     NSData *fileData = [NSData dataWithContentsOfFile:fileLocalURL.path];
     
@@ -2155,34 +2160,8 @@ NSInteger const kMXRoomInvalidInviteSenderErrorCode = 9002;
                     replyContentFormattedBody:(NSString**)replyContentFormattedBody
                               stringLocalizer:(id<MXSendReplyEventStringLocalizerProtocol>)stringLocalizer
 {
-    if (eventToReply.eventType == MXEventTypePollStart)
-    {
-        NSString *question = [MXEventContentPollStart modelFromJSON:eventToReply.content].question;
-
-        *replyContentBody = [self replyMessageBodyFromSender:eventToReply.sender
-                                           senderMessageBody:question
-                                      isSenderMessageAnEmote:NO
-                                     isSenderMessageAReplyTo:eventToReply.isReplyEvent
-                                                replyMessage:textMessage];
-        
-        // As formatted body is mandatory for a reply message, use non formatted to build it
-        NSString *finalFormattedTextMessage = formattedTextMessage ?: textMessage;
-        
-        *replyContentFormattedBody = [self replyMessageFormattedBodyFromEventToReply:eventToReply
-                                                          senderMessageFormattedBody:question
-                                                              isSenderMessageAnEmote:NO
-                                                               replyFormattedMessage:finalFormattedTextMessage
-                                                                     stringLocalizer:stringLocalizer];
-        return;
-    }
-    
     NSString *msgtype;
     MXJSONModelSetString(msgtype, eventToReply.content[kMXMessageTypeKey]);
-    
-    if (!msgtype)
-    {
-        return;
-    }
     
     BOOL eventToReplyIsAlreadyAReply = eventToReply.isReplyEvent;
     BOOL isSenderMessageAnEmote = [msgtype isEqualToString:kMXMessageTypeEmote];
@@ -2190,10 +2169,23 @@ NSInteger const kMXRoomInvalidInviteSenderErrorCode = 9002;
     NSString *senderMessageBody;
     NSString *senderMessageFormattedBody;
     
-    if (eventToReply.location)
+    if (eventToReply.eventType == MXEventTypePollStart)
+    {
+        NSString *question = [MXEventContentPollStart modelFromJSON:eventToReply.content].question;
+        
+        senderMessageBody = question;
+    }
+    else if (eventToReply.eventType == MXEventTypeBeaconInfo)
+    {
+        senderMessageBody = stringLocalizer.senderSentTheirLiveLocation;
+    }
+    else if (eventToReply.location)
     {
         senderMessageBody = stringLocalizer.senderSentTheirLocation;
-        senderMessageFormattedBody = senderMessageBody;
+    }
+    else if (eventToReply.eventType == MXEventTypeBeaconInfo)
+    {
+        senderMessageBody = stringLocalizer.senderSentTheirLiveLocation;
     }
     else if ([msgtype isEqualToString:kMXMessageTypeText]
         || [msgtype isEqualToString:kMXMessageTypeNotice]
@@ -2214,32 +2206,33 @@ NSInteger const kMXRoomInvalidInviteSenderErrorCode = 9002;
     else if ([msgtype isEqualToString:kMXMessageTypeImage])
     {
         senderMessageBody = stringLocalizer.senderSentAnImage;
-        senderMessageFormattedBody = senderMessageBody;
     }
     else if ([msgtype isEqualToString:kMXMessageTypeVideo])
     {
         senderMessageBody = stringLocalizer.senderSentAVideo;
-        senderMessageFormattedBody = senderMessageBody;
     }
     else if (eventToReply.isVoiceMessage)
     {
         senderMessageBody = stringLocalizer.senderSentAVoiceMessage;
-        senderMessageFormattedBody = senderMessageBody;
     }
     else if ([msgtype isEqualToString:kMXMessageTypeAudio])
     {
         senderMessageBody = stringLocalizer.senderSentAnAudioFile;
-        senderMessageFormattedBody = senderMessageBody;
     }
     else if ([msgtype isEqualToString:kMXMessageTypeFile])
     {
         senderMessageBody = stringLocalizer.senderSentAFile;
-        senderMessageFormattedBody = senderMessageBody;
     }
     else
     {
         // Other message types are not supported
         MXLogDebug(@"[MXRoom] Reply to message type %@ is not supported", msgtype);
+    }
+    
+    if (!senderMessageFormattedBody)
+    {
+        // As formatted body is mandatory for a reply message, if no formatted body has been defined use non formatted body
+        senderMessageFormattedBody = senderMessageBody;
     }
     
     if (senderMessageBody && senderMessageFormattedBody)
@@ -2428,6 +2421,11 @@ NSInteger const kMXRoomInvalidInviteSenderErrorCode = 9002;
 - (BOOL)canReplyToEvent:(MXEvent *)eventToReply
 {
     if(eventToReply.eventType == MXEventTypePollStart)
+    {
+        return YES;
+    }
+    
+    if(eventToReply.eventType == MXEventTypeBeaconInfo)
     {
         return YES;
     }
@@ -3634,15 +3632,67 @@ NSInteger const kMXRoomInvalidInviteSenderErrorCode = 9002;
  This method ensures that the MXCryptoStore and the MXStore are aligned. If the bug happens, it should be autofixed
  by this code.
  */
-- (void)checkEncryptionState
+- (void)validateEncryptionStateConsistency
 {
-    if ([mxSession.crypto isRoomEncrypted:self.roomId]
-            && !self.summary.isEncrypted)
+    MXCrypto *crypto = mxSession.crypto;
+    if (!crypto)
+    {
+#ifdef MX_CRYPTO
+        MXLogError(@"[MXRoom] checkEncryptionState: Crypto module is not present");
+#endif
+        return;
+    }
+    
+    BOOL isEncryptedInStore = [crypto isRoomEncrypted:self.roomId];
+    if (isEncryptedInStore && !self.summary.isEncrypted)
     {
         MXLogError(@"[MXRoom] checkEncryptionState: summary.isEncrypted is wrong for room %@. Fix it.", self.roomId);
         self.summary.isEncrypted = YES;
         [self.summary save:YES];
     }
+    else if (!isEncryptedInStore)
+    {
+        if (self.summary.isEncrypted)
+        {
+            MXLogError(@"[MXRoom] checkEncryptionState: Crypto and state store do not match");
+        }
+        else
+        {
+            MXLogDebug(@"[MXRoom] checkEncryptionState: Room is not encrypted");
+        }
+    }
+}
+
+/**
+ Check whether the content must be encrypted before sending
+ */
+- (BOOL)shouldEncryptEventOfType:(MXEventTypeString)eventTypeString
+{
+    // Ensures that state between summary and crypto store is consistent,
+    // otherwise log an error
+    [self validateEncryptionStateConsistency];
+    
+    if (!mxSession.crypto)
+    {
+#ifdef MX_CRYPTO
+        MXLogError(@"[MXRoom] shouldEncryptEventOfType: Not encrypting, crypto module not present");
+#endif
+        return NO;
+    }
+    
+    if (!self.summary.isEncrypted)
+    {
+        MXLogDebug(@"[MXRoom] shouldEncryptEventOfType: Not encrypting, room not encrypted");
+        return NO;
+    }
+    
+    if (![self isEncryptionRequiredForEventType:eventTypeString])
+    {
+        MXLogDebug(@"[MXRoom] shouldEncryptEventOfType: Not encrypting, %@ does not require encryption", eventTypeString);
+        return NO;
+    }
+    
+    return YES;
 }
 
 - (void)membersTrustLevelSummaryWithForceDownload:(BOOL)forceDownload success:(void (^)(MXUsersTrustLevelSummary *usersTrustLevelSummary))success failure:(void (^)(NSError *error))failure

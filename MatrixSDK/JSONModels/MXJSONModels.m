@@ -32,6 +32,8 @@ static NSString* const kMXLoginFlowTypeKey = @"type";
 
 #pragma mark - Implementation
 
+#warning File has not been annotated with nullability, see MX_ASSUME_MISSING_NULLABILITY_BEGIN
+
 @implementation MXPublicRoom
 
 + (id)modelFromJSON:(NSDictionary *)JSONDictionary
@@ -138,7 +140,7 @@ NSString *const kMXLoginIdentifierTypePhone = @"m.id.phone";
 
 + (instancetype)modelFromJSON:(NSDictionary *)JSONDictionary
 {
-    MXLoginFlow *loginFlow = [self new];    
+    MXLoginFlow *loginFlow = [self new];
     if (loginFlow)
     {
         MXJSONModelSetString(loginFlow.type, JSONDictionary[kMXLoginFlowTypeKey]);
@@ -1063,11 +1065,21 @@ NSString *const kMXPushRuleScopeStringDevice = @"device";
 
 #pragma mark - Crypto
 
+@interface MXKeysUploadResponse ()
+
+/**
+ The original JSON used to create the response model
+ */
+@property (nonatomic, copy) NSDictionary *responseJSON;
+@end
+
 @implementation MXKeysUploadResponse
 
 + (id)modelFromJSON:(NSDictionary *)JSONDictionary
 {
     MXKeysUploadResponse *keysUploadResponse = [[MXKeysUploadResponse alloc] init];
+    keysUploadResponse.responseJSON = JSONDictionary;
+    
     if (keysUploadResponse)
     {
         MXJSONModelSetDictionary(keysUploadResponse.oneTimeKeyCounts, JSONDictionary[@"one_time_key_counts"]);
@@ -1080,6 +1092,19 @@ NSString *const kMXPushRuleScopeStringDevice = @"device";
     return [((NSNumber*)_oneTimeKeyCounts[algorithm]) unsignedIntegerValue];
 }
 
+- (NSDictionary *)JSONDictionary
+{
+    return self.responseJSON;
+}
+
+@end
+
+@interface MXKeysQueryResponse ()
+
+/**
+ The original JSON used to create the response model
+ */
+@property (nonatomic, copy) NSDictionary *responseJSON;
 @end
 
 @implementation MXKeysQueryResponse
@@ -1089,6 +1114,8 @@ NSString *const kMXPushRuleScopeStringDevice = @"device";
     MXKeysQueryResponse *keysQueryResponse = [[MXKeysQueryResponse alloc] init];
     if (keysQueryResponse)
     {
+        keysQueryResponse.responseJSON = JSONDictionary;
+        
         // Devices keys
         NSMutableDictionary *map = [NSMutableDictionary dictionary];
 
@@ -1170,6 +1197,19 @@ NSString *const kMXPushRuleScopeStringDevice = @"device";
     return keys;
 }
 
+- (NSDictionary *)JSONDictionary
+{
+    return self.responseJSON;
+}
+
+@end
+
+@interface MXKeysClaimResponse ()
+
+/**
+ The original JSON used to create the response model
+ */
+@property (nonatomic, copy) NSDictionary *responseJSON;
 @end
 
 @implementation MXKeysClaimResponse
@@ -1179,6 +1219,8 @@ NSString *const kMXPushRuleScopeStringDevice = @"device";
     MXKeysClaimResponse *keysClaimResponse = [[MXKeysClaimResponse alloc] init];
     if (keysClaimResponse)
     {
+        keysClaimResponse.responseJSON = JSONDictionary;
+        
         NSMutableDictionary *map = [NSMutableDictionary dictionary];
 
         if ([JSONDictionary isKindOfClass:NSDictionary.class])
@@ -1208,6 +1250,11 @@ NSString *const kMXPushRuleScopeStringDevice = @"device";
     }
     
     return keysClaimResponse;
+}
+
+- (NSDictionary *)JSONDictionary
+{
+    return self.responseJSON;
 }
 
 @end

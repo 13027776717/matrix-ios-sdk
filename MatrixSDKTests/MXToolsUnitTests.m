@@ -17,22 +17,13 @@
 #import <XCTest/XCTest.h>
 
 #import "MXTools.h"
+#import "MatrixSDKTestsSwiftHeader.h"
 
 @interface MXToolsUnitTests : XCTestCase
 
 @end
 
 @implementation MXToolsUnitTests
-
-- (void)setUp
-{
-    [super setUp];
-}
-
-- (void)tearDown
-{
-    [super tearDown];
-}
 
 - (void)testGenerateSecret
 {
@@ -116,6 +107,26 @@
 - (void)testFileExtensionFromImageJPEGContentType
 {
     XCTAssertEqualObjects([MXTools fileExtensionFromContentType:@"image/jpeg"], @".jpeg");
+}
+
+#pragma mark - URL creation
+
+- (void)testUrlGeneration
+{
+    NSString *base = @"https://www.domain.org";
+    NSString *parameter = @"parameter_name=parameter_value";
+    NSString *currentResult = base;
+    NSString *url = [NSString stringWithFormat:@"%@?%@", base, parameter];
+    while (url.length < [MXTools kMXUrlMaxLength]) {
+        currentResult = [MXTools urlStringWithBase:currentResult queryParameters:@[parameter]];
+        // if the url is shorter than kMXUrlMaxLength, the result shouldn't be truncated
+        XCTAssertEqualObjects(url, currentResult);
+        url = [NSString stringWithFormat:@"%@&%@", url, parameter];
+    }
+    
+    // if the URL is longer than kMXUrlMaxLength, no more parameter should be added
+    XCTAssertEqualObjects(currentResult, [MXTools urlStringWithBase:currentResult queryParameters:@[parameter]]);
+    XCTAssertNotEqualObjects(url, [MXTools urlStringWithBase:currentResult queryParameters:@[parameter]]);
 }
 
 @end

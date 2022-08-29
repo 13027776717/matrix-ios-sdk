@@ -61,6 +61,7 @@ NSString *const kMXSessionDirectRoomsDidChangeNotification = @"kMXSessionDirectR
 NSString *const kMXSessionVirtualRoomsDidChangeNotification = @"kMXSessionVirtualRoomsDidChangeNotification";
 NSString *const kMXSessionAccountDataDidChangeNotification = @"kMXSessionAccountDataDidChangeNotification";
 NSString *const kMXSessionAccountDataDidChangeIdentityServerNotification = @"kMXSessionAccountDataDidChangeIdentityServerNotification";
+NSString *const kMXSessionAccountDataDidChangeBreadcrumbsNotification = @"kMXSessionAccountDataDidChangeBreadcrumbsNotification";
 NSString *const kMXSessionDidCorruptDataNotification = @"kMXSessionDidCorruptDataNotification";
 NSString *const kMXSessionCryptoDidCorruptDataNotification = @"kMXSessionCryptoDidCorruptDataNotification";
 NSString *const kMXSessionNewGroupInviteNotification = @"kMXSessionNewGroupInviteNotification";
@@ -529,6 +530,8 @@ typedef void (^MXOnResumeDone)(void);
            storeCompletion:(void (^)(void))storeCompletion
 {
     MXLogDebug(@"[MXSession] handleSyncResponse: Received %tu joined rooms, %tu invited rooms, %tu left rooms, %tu toDevice events.", syncResponse.rooms.join.count, syncResponse.rooms.invite.count, syncResponse.rooms.leave.count, syncResponse.toDevice.events.count);
+    
+    [self.crypto handleSyncResponse:syncResponse];
     
     // Check whether this is the initial sync
     BOOL isInitialSync = !self.isEventStreamInitialised;
@@ -1856,8 +1859,16 @@ typedef void (^MXOnResumeDone)(void);
                     [self refreshIdentityServerServiceTerms];
                 }
             }
+            
+            if ([event[@"type"] isEqualToString:kMXAccountDataTypeBreadcrumbs])
+            {
+                [[NSNotificationCenter defaultCenter] postNotificationName:kMXSessionAccountDataDidChangeBreadcrumbsNotification
+                                                                    object:self
+                                                                  userInfo:nil];
+            }
         }
 
+        [self validateAccountData];
         self.store.userAccountData = _accountData.accountData;
         
         // Trigger a global notification for the account data update
@@ -1867,6 +1878,20 @@ typedef void (^MXOnResumeDone)(void);
                                                                 object:self
                                                               userInfo:nil];
         }
+    }
+}
+
+/**
+ Private method to validate local account data and report any potential state corruption
+ */
+- (void)validateAccountData
+{
+    // Detecting an issue where more than one valid SSSS key is present on the client
+    // https://github.com/vector-im/element-ios/issues/4569
+    NSInteger keysCount = self.crypto.secretStorage.numberOfValidKeys;
+    if (keysCount > 1)
+    {
+        MXLogError(@"[MXSession] validateAccountData: Detected %ld valid SSSS keys, should only have one at most", keysCount)
     }
 }
 
@@ -4441,6 +4466,35 @@ typedef void (^MXOnResumeDone)(void);
     }];
 }
 
+- (void)updateBreadcrumbsWithRoomWithId:(NSString *)roomId
+                                success:(void (^)(void))success
+                                failure:(void (^)(NSError *error))failure
+{
+    NSDictionary<NSString *, NSArray *> *breadcrumbs = [self.accountData accountDataForEventType:kMXAccountDataTypeBreadcrumbs];
+    
+    NSMutableArray<NSString *> *recentRoomIds = breadcrumbs[kMXAccountDataTypeRecentRoomsKey] ? [NSMutableArray arrayWithArray:breadcrumbs[kMXAccountDataTypeRecentRoomsKey]] : [NSMutableArray array];
+    
+    NSInteger index = [recentRoomIds indexOfObject:roomId];
+    if (index != NSNotFound)
+    {
+        [recentRoomIds removeObjectAtIndex:index];
+    }
+    [recentRoomIds insertObject:roomId atIndex:0];
+    
+    [self setAccountData:@{kMXAccountDataTypeRecentRoomsKey : recentRoomIds}
+                 forType:kMXAccountDataTypeBreadcrumbs
+                 success:^{
+        if (success)
+        {
+            success();
+        }
+    } failure:^(NSError *error) {
+        if (failure)
+        {
+            failure(error);
+        }
+    }];
+}
 
 #pragma mark - Homeserver information
 - (MXWellKnown *)homeserverWellknown

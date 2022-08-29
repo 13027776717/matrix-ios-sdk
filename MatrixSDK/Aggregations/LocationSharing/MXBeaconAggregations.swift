@@ -25,7 +25,10 @@ public class MXBeaconAggregations: NSObject {
     private unowned let session: MXSession
     
     private var perRoomListeners: [MXBeaconInfoSummaryPerRoomListener] = []
+    private var perRoomDeletionListeners: [MXBeaconInfoSummaryDeletionPerRoomListener] = []
+    
     private var allRoomListeners: [MXBeaconInfoSummaryAllRoomListener] = []
+    private var allRoomDeletionListeners: [MXBeaconInfoSummaryDeletionAllRoomListener] = []
     
     private var beaconInfoSummaryStore: MXBeaconInfoSummaryStoreProtocol
     
@@ -48,6 +51,11 @@ public class MXBeaconAggregations: NSObject {
     /// Get all MXBeaconInfoSummary in a room
     public func getBeaconInfoSummaries(inRoomWithId roomId: String) -> [MXBeaconInfoSummaryProtocol] {
         return self.beaconInfoSummaryStore.getAllBeaconInfoSummaries(inRoomWithId: roomId)
+    }
+    
+    /// Get all MXBeaconInfoSummary in a room for a user
+    public func getBeaconInfoSummaries(for userId: String, inRoomWithId roomId: String) -> [MXBeaconInfoSummaryProtocol] {
+        return self.beaconInfoSummaryStore.getBeaconInfoSummaries(for: userId, inRoomWithId: roomId)
     }
     
     /// Get all MXBeaconInfoSummary for a user
@@ -84,6 +92,10 @@ public class MXBeaconAggregations: NSObject {
             return
         }
         
+        guard event.isRedactedEvent() == false else {
+            return
+        }
+        
         guard let beacon = MXBeacon(mxEvent: event) else {
             return
         }
@@ -103,11 +115,78 @@ public class MXBeaconAggregations: NSObject {
             return
         }
         
+        if event.isRedactedEvent() {
+            self.handleRedactedBeaconInfo(with: event, roomId: roomId)
+            return
+        }
+        
         guard let beaconInfo = MXBeaconInfo(mxEvent: event) else {
             return
         }
         
         self.addOrUpdateBeaconInfo(beaconInfo, inRoomWithId: roomId)
+    }
+    
+    private func handleRedactedBeaconInfo(with event: MXEvent, roomId: String) {
+        
+        guard let beaconInfoEventId = event.eventId else {
+            return
+        }
+        
+        // If `m.beacon_info` event is redacted remove the associated MXbeaconInfoSummary if exists.
+        if let beaconInfoSummary = self.beaconInfoSummaryStore.getBeaconInfoSummary(withIdentifier: beaconInfoEventId, inRoomWithId: roomId) {
+            
+            // Delete beacon info summary
+            self.beaconInfoSummaryStore.deleteBeaconInfoSummary(with: beaconInfoEventId, inRoomWithId: roomId)
+            
+            // If the beacon info belongs to the current user
+            if beaconInfoSummary.userId == session.myUserId {
+                
+                // Redact associated stopped beacon info if exists
+                self.redactStoppedBeaconInfoAssociatedToBeaconInfo(eventId: beaconInfoEventId, inRoomWithId: roomId)
+                
+                // Redact associated beacon events
+                self.redactBeaconsRelatedToBeaconInfo(with: beaconInfoEventId, inRoomWithId: beaconInfoSummary.roomId)
+                
+            }
+            
+            self.notifyBeaconInfoSummaryDeletionListeners(ofRoomWithId: roomId, beaconInfoEventId: beaconInfoEventId)
+        }
+    }
+    
+    private func redactBeaconsRelatedToBeaconInfo(with eventId: String, inRoomWithId roomId: String) {
+        guard let room = self.session.room(withRoomId: roomId) else {
+            return
+        }
+        
+        let relationEvents = self.session.store.relations(forEvent: eventId, inRoom: roomId, relationType: MXEventRelationTypeReference)
+        
+        for relationEvent in relationEvents where relationEvent.eventType == .beacon && relationEvent.isRedactedEvent() == false {
+            
+            room.redactEvent(relationEvent.eventId, reason: nil) { response in
+                if case .failure(let error) = response {
+                    MXLog.error("[MXBeaconAggregations] Failed to redact m.beacon event with error: \(error)")
+                }
+            }
+        }
+    }
+    
+    private func redactStoppedBeaconInfoAssociatedToBeaconInfo(eventId beaconInfoEnventId: String, inRoomWithId roomId: String) {
+        guard let room = self.session.room(withRoomId: roomId) else {
+            return
+        }
+        
+        self.session.locationService.getStoppedBeaconInfo(for: beaconInfoEnventId, inRoomWithId: roomId) { stoppedBeaconInfo in
+         
+            if let eventId = stoppedBeaconInfo?.originalEvent?.eventId {
+                // Redact stopped beacon info
+                room.redactEvent(eventId, reason: nil) { response in
+                    if case .failure(let error) = response {
+                        MXLog.error("[MXBeaconAggregations] Failed to redact stopped m.beacon_info event with error: \(error)")
+                    }
+                }
+            }
+        }
     }
     
     // MARK: Data update listener
@@ -129,12 +208,34 @@ public class MXBeaconAggregations: NSObject {
 
         return listener
     }
+    
+    /// Listen to all beacon info summary deletion in a room
+    public func listenToBeaconInfoSummaryDeletionInRoom(withId roomId: String, handler: @escaping (_ beaconInfoEventId: String) -> Void) -> AnyObject? {
+        let listener = MXBeaconInfoSummaryDeletionPerRoomListener(roomId: roomId, notificationHandler: handler)
+
+        perRoomDeletionListeners.append(listener)
+
+        return listener
+    }
+    
+    /// Listen to all beacon info summary deletion in all rooms
+    public func listenToBeaconInfoSummaryDeletion(handler: @escaping (_ roomId: String, _ beaconInfoEventId: String) -> Void) -> AnyObject? {
+        let listener = MXBeaconInfoSummaryDeletionAllRoomListener(notificationHandler: handler)
+        
+        allRoomDeletionListeners.append(listener)
+
+        return listener
+    }
 
     public func removeListener(_ listener: Any) {
         if let perRoomListener = listener as? MXBeaconInfoSummaryPerRoomListener {
             perRoomListeners.removeAll(where: { $0 === perRoomListener })
         } else if let allRoomListener = listener as? MXBeaconInfoSummaryAllRoomListener {
             allRoomListeners.removeAll(where: { $0 === allRoomListener })
+        } else if let perRoomDeletionListener = listener as? MXBeaconInfoSummaryDeletionPerRoomListener {
+            perRoomDeletionListeners.removeAll(where: { $0 === perRoomDeletionListener })
+        } else if let allRoomDeletionListener = listener as? MXBeaconInfoSummaryDeletionAllRoomListener {
+            allRoomDeletionListeners.removeAll(where: { $0 === allRoomDeletionListener })
         }
     }
     
@@ -156,17 +257,65 @@ public class MXBeaconAggregations: NSObject {
                 
                 existingBeaconInfoSummary.updateWithBeaconInfo(beaconInfo)
                 beaconInfoSummary = existingBeaconInfoSummary
+            } else {
+                MXLog.error("[MXBeaconAggregations] Fails to find beacon info summary associated to stopped beacon info event id: \(eventId)")
             }
             
         } else if let existingBeaconInfoSummary = self.getBeaconInfoSummary(withIdentifier: eventId, inRoomWithId: roomId) {
-
+            // Check if a beacon info summary exist with the same beacon info event id
             // If beacon info is older than existing one, do not take it into account
             if beaconInfo.timestamp > existingBeaconInfoSummary.beaconInfo.timestamp {
                 existingBeaconInfoSummary.updateWithBeaconInfo(beaconInfo)
                 beaconInfoSummary = existingBeaconInfoSummary
             }
         } else {
-            beaconInfoSummary = MXBeaconInfoSummary(beaconInfo: beaconInfo)
+            
+            var shouldStopNewBeaconInfo = false
+            
+            if let userId = beaconInfo.userId {
+                
+                // Retrieve existing live beacon info summaries for the user
+                let existingLiveBeaconInfoSummaries = self.beaconInfoSummaryStore.getBeaconInfoSummaries(for: userId, inRoomWithId: roomId).sorted { firstSummary, secondSummary in
+                    firstSummary.beaconInfo.timestamp < secondSummary.beaconInfo.timestamp
+                }
+                
+                let beaconInfoSummariesToStop: [MXBeaconInfoSummary]
+                
+                let lastBeaconInfoSummary = existingLiveBeaconInfoSummaries.last
+                
+                if let lastBeaconInfoSummary = lastBeaconInfoSummary, beaconInfo.timestamp < lastBeaconInfoSummary.beaconInfo.timestamp {
+                        // The received live beacon info is older than last existing one mark it as stopped
+                        shouldStopNewBeaconInfo = true
+                        
+                        // Do not stop the last live beacon info
+                        beaconInfoSummariesToStop = existingLiveBeaconInfoSummaries.filter({ summary in
+                            summary.id != lastBeaconInfoSummary.id
+                        })
+                } else {
+                    // Received beacon info is newer than existing one, stop other beacon info
+                    beaconInfoSummariesToStop = existingLiveBeaconInfoSummaries
+                }
+                
+                // Stop other existing live beacon info summaries
+                for beaconInfoSummary in beaconInfoSummariesToStop {
+                    let stoppedBeaconInfo = beaconInfoSummary.beaconInfo.stopped()
+                    beaconInfoSummary.updateWithBeaconInfo(stoppedBeaconInfo)
+                    self.beaconInfoSummaryStore.addOrUpdateBeaconInfoSummary(beaconInfoSummary, inRoomWithId: roomId)
+                    self.notifyBeaconInfoSummaryListeners(ofRoomWithId: roomId, beaconInfoSummary: beaconInfoSummary)
+                }
+            }
+            
+            let finalBeaconInfo: MXBeaconInfo
+            
+            // We can only have one **live** beacon info per user and per room
+            // If the received live beacon info is older than other existing live, mark it as stopped
+            if shouldStopNewBeaconInfo {
+                finalBeaconInfo = beaconInfo.stopped()
+            } else {
+                finalBeaconInfo = beaconInfo
+            }
+            
+            beaconInfoSummary = MXBeaconInfoSummary(beaconInfo: finalBeaconInfo)
         }
         
         if let beaconInfoSummary = beaconInfoSummary {
@@ -200,9 +349,28 @@ public class MXBeaconAggregations: NSObject {
         }
     }
     
+    private func notifyBeaconInfoSummaryDeletionListeners(ofRoomWithId roomId: String, beaconInfoEventId: String) {
+        
+        for listener in perRoomDeletionListeners where listener.roomId == roomId {
+            listener.notificationHandler(beaconInfoEventId)
+        }
+        
+        for listener in allRoomDeletionListeners {
+            listener.notificationHandler(roomId, beaconInfoEventId)
+        }
+    }
+    
     /// Get MXBeaconInfoSummary class instead of MXBeaconInfoSummaryProtocol to have access to internal methods
     private func getBeaconInfoSummary(withIdentifier identifier: String, inRoomWithId roomId: String) -> MXBeaconInfoSummary? {
         return self.beaconInfoSummaryStore.getBeaconInfoSummary(withIdentifier: identifier, inRoomWithId: roomId)
+    }
+    
+    private func getLiveBeaconInfoSummaries(for userId: String, inRoomWithId roomId: String) -> [MXBeaconInfoSummary] {
+        
+        let beaconInfoSummaries = self.beaconInfoSummaryStore.getBeaconInfoSummaries(for: userId, inRoomWithId: roomId)
+        return beaconInfoSummaries.filter { beaconInfoSummary in
+            return beaconInfoSummary.beaconInfo.isLive
+        }
     }
     
     private func getBeaconInfoSummary(withStoppedBeaconInfo beaconInfo: MXBeaconInfo, inRoomWithId roomId: String) -> MXBeaconInfoSummary? {

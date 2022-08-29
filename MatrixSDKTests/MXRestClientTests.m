@@ -28,6 +28,7 @@
 // Do not bother with retain cycles warnings in tests
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Warc-retain-cycles"
+#pragma clang diagnostic ignored "-Wdeprecated"
 
 @interface MXRestClientTests : XCTestCase
 
@@ -47,9 +48,9 @@
 
 - (void)tearDown
 {
-    [super tearDown];
-
     _matrixSDKTestsData = nil;
+    
+    [super tearDown];
 }
 
 - (void)testInit
@@ -822,16 +823,13 @@
 {
     [self.matrixSDKTestsData doMXRestClientTestWithBobAndARoomWithMessages:self readyToTest:^(MXRestClient *bobRestClient, NSString *roomId, XCTestExpectation *expectation) {
         
-        [bobRestClient stateOfRoom:roomId success:^(NSDictionary *JSONData) {
+        [bobRestClient stateOfRoom:roomId success:^(NSArray *JSONData) {
             
             XCTAssertNotNil(JSONData);
-            
-            XCTAssert([JSONData isKindOfClass:[NSArray class]]);
-            NSArray *states = (NSArray*)JSONData;
-            XCTAssertGreaterThan(states.count, 0);
+            XCTAssertGreaterThan(JSONData.count, 0);
             
             // Check that all provided events are state events
-            for (NSDictionary *eventDict in states)
+            for (NSDictionary *eventDict in JSONData)
             {
                 MXEvent *event = [MXEvent modelFromJSON:eventDict];
                 

@@ -23,6 +23,9 @@
 #import "MatrixSDKTestsData.h"
 #import "MatrixSDKTestsE2EData.h"
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Warc-retain-cycles"
+#pragma clang diagnostic ignored "-Wdeprecated"
 
 // Secret for the qkEmh7mHZBySbXqroxiz7fM18fJuXnnt SSSS key
 NSString *jsSDKDataPassphrase = @"ILoveMatrix&Riot";
@@ -63,6 +66,8 @@ UInt8 privateKeyBytes[] = {
 {
     matrixSDKTestsData = nil;
     matrixSDKTestsE2EData = nil;
+    
+    [super tearDown];
 }
 
 
@@ -273,7 +278,7 @@ UInt8 privateKeyBytes[] = {
     [matrixSDKTestsE2EData doE2ETestWithAliceInARoom:self readyToTest:^(MXSession *aliceSession, NSString *roomId, XCTestExpectation *expectation) {
         
         // - Create a new secret storage key
-        MXSecretStorage *secretStorage = aliceSession.crypto.secretStorage;
+        __weak MXSecretStorage *secretStorage = aliceSession.crypto.secretStorage;
         [secretStorage createKeyWithKeyId:nil keyName:nil passphrase:nil success:^(MXSecretStorageKeyCreationInfo * _Nonnull keyCreationInfo) {
             
             // - Set it as default
@@ -379,6 +384,51 @@ UInt8 privateKeyBytes[] = {
     }];
 }
 
+// Test the number of valid (i.e. non-empty) keys
+// - Have Alice with SSSS bootstrapped
+// -> Should only have one SSSS key
+// - Add two more SSSS without deleting previous ones
+// -> Should now have 3 SSSS keys
+- (void)testNumberOfValidKeys
+{
+    NSDictionary *ssssKeyContent = @{
+                                     @"algorithm": @"m.secret_storage.v1.aes-hmac-sha2",
+                                     @"passphrase": @{
+                                             @"algorithm": @"m.pbkdf2",
+                                             @"iterations": @(500000),
+                                             @"salt": @"Djb0XcHWHu5Mx3GTDar6OfvbkxScBR6N"
+                                             },
+                                     @"iv": @"5SwqbVexZodcLg+PQcPhHw==",
+                                     @"mac": @"NBJLmrWo6uXoiNHpKUcBA9d4xKcoj0GnB+4F234zNwI=",
+                                     };
+    
+    // - Have Alice with SSSS bootstrapped
+    [self createScenarioWithMatrixJsSDKData:^(MXSession *aliceSession, NSString *roomId, XCTestExpectation *expectation) {
+        
+        // -> Should only have one SSSS key
+        MXSecretStorage *secretStorage = aliceSession.crypto.secretStorage;
+        XCTAssertEqual(secretStorage.numberOfValidKeys, 1);
+        
+        // - Add two more SSSS without deleting previous ones
+        [aliceSession setAccountData:ssssKeyContent forType:@"m.secret_storage.key.AAAA" success:^{
+            [aliceSession setAccountData:ssssKeyContent forType:@"m.secret_storage.key.BBBB" success:^{
+                
+                // -> Should now have 3 SSSS keys
+                MXSecretStorage *secretStorage = aliceSession.crypto.secretStorage;
+                XCTAssertEqual(secretStorage.numberOfValidKeys, 3);
+                [expectation fulfill];
+                        
+            } failure:^(NSError *error) {
+                XCTFail(@"Failed to set account data - %@", error);
+                [expectation fulfill];
+            }];
+            
+        } failure:^(NSError *error) {
+            XCTFail(@"Failed to set account data - %@", error);
+            [expectation fulfill];
+        }];
+    }];
+}
 
 #pragma mark - Secret storage
 
@@ -560,3 +610,5 @@ UInt8 privateKeyBytes[] = {
 }
 
 @end
+
+#pragma clang diagnostic pop

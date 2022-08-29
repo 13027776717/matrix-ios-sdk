@@ -144,7 +144,14 @@ NSTimeInterval kMXCryptoMinForceSessionPeriod = 3600.0; // one hour
     __block MXCrypto *crypto;
 
 #ifdef MX_CRYPTO
-
+    
+    #if DEBUG
+    MXCrypto *cryptoV2 = [self createCryptoV2IfAvailableWithSession:mxSession];
+    if (cryptoV2) {
+        return cryptoV2;
+    }
+    #endif
+    
     dispatch_queue_t cryptoQueue = [MXCrypto dispatchQueueForUser:mxSession.matrixRestClient.credentials.userId];
     dispatch_sync(cryptoQueue, ^{
 
@@ -161,6 +168,14 @@ NSTimeInterval kMXCryptoMinForceSessionPeriod = 3600.0; // one hour
 + (void)checkCryptoWithMatrixSession:(MXSession*)mxSession complete:(void (^)(MXCrypto *crypto))complete
 {
 #ifdef MX_CRYPTO
+    
+    #if DEBUG
+    MXCrypto *cryptoV2 = [self createCryptoV2IfAvailableWithSession:mxSession];
+    if (cryptoV2) {
+        complete(cryptoV2);
+        return;
+    }
+    #endif
 
     MXLogDebug(@"[MXCrypto] checkCryptoWithMatrixSession for %@", mxSession.matrixRestClient.credentials.userId);
 
@@ -885,6 +900,13 @@ NSTimeInterval kMXCryptoMinForceSessionPeriod = 3600.0; // one hour
     // We will be checking this often enough for it not to warrant automatic retries.
     self.uploadFallbackKeyOperation = [self generateAndUploadFallbackKey];
 #endif
+}
+
+- (void)handleSyncResponse:(MXSyncResponse *)syncResponse
+{
+    // Not implemented, the default `MXCrypto` instead uses more specific functions
+    // such as `handleRoomKeyEvent` and `handleDeviceUnusedFallbackKeys`. The method
+    // is possibly used by `MXCrypto` subclasses.
 }
 
 - (void)onSyncCompleted:(NSString *)oldSyncToken nextSyncToken:(NSString *)nextSyncToken catchingUp:(BOOL)catchingUp

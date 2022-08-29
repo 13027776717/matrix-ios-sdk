@@ -14,11 +14,13 @@ abstract_target 'MatrixSDK' do
     pod 'OLMKit', '~> 3.2.5', :inhibit_warnings => true
     #pod 'OLMKit', :path => '../olm/OLMKit.podspec'
     
-    pod 'Realm', '10.26.0'
+    pod 'Realm', '10.27.0'
     pod 'libbase58', '~> 0.1.4'
     
     target 'MatrixSDK-iOS' do
-        platform :ios, '9.0'
+        platform :ios, '11.0'
+        
+        pod 'MatrixSDKCrypto', "0.1.0", :configurations => ['DEBUG']
         
         target 'MatrixSDKTests-iOS' do
             inherit! :search_paths
@@ -34,4 +36,12 @@ abstract_target 'MatrixSDK' do
             pod 'OHHTTPStubs', '~> 9.1.0'
         end
     end
+end
+
+post_install do |installer|
+  installer.pods_project.targets.each do |target|
+    target.build_configurations.each do |config|
+      config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '11.0'
+    end
+  end
 end
