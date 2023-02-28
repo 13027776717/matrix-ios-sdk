@@ -11,6 +11,9 @@ import Foundation
 
 
 public extension MXSession {
+    enum Error: Swift.Error {
+        case missingRoom
+    }
     
     /// Module that manages threads
     var threadingService: MXThreadingService {
@@ -163,6 +166,7 @@ public extension MXSession {
         let parameters = MXRoomCreationParameters()
         parameters.name = name
         parameters.topic = topic
+        parameters.roomAlias = aliasLocalPart
         
         let stateEventBuilder = MXRoomInitialStateEventBuilder()
         
@@ -173,7 +177,6 @@ public extension MXSession {
             }
             parameters.preset = kMXRoomPresetPublicChat
             parameters.visibility = kMXRoomDirectoryVisibilityPublic
-            parameters.roomAlias = aliasLocalPart
             let guestAccessStateEvent = stateEventBuilder.buildGuestAccessEvent(withAccess: .canJoin)
             parameters.addOrUpdateInitialStateEvent(guestAccessStateEvent)
             let historyVisibilityStateEvent = stateEventBuilder.buildHistoryVisibilityEvent(withVisibility: .worldReadable)
@@ -249,9 +252,23 @@ public extension MXSession {
         return __createRoom(parameters, success: currySuccess(completion), failure: curryFailure(completion))
     }
     
-    
-    
-    
+    /**
+     Return the first joined direct chat listed in account data for this user,
+     or it will create one if no room exists yet.
+     */
+    func getOrCreateDirectJoinedRoom(with userId: String) async throws -> MXRoom {
+        try await withCheckedThrowingContinuation { continuation in
+            _ = getOrCreateDirectJoinedRoom(withUserId: userId) { room in
+                if let room = room {
+                    continuation.resume(returning: room)
+                } else {
+                    continuation.resume(throwing: Error.missingRoom)
+                }
+            } failure: { error in
+                continuation.resume(throwing: error ?? Error.missingRoom)
+            }
+        }
+    }
     
     /**
      Join a room, optionally where the user has been invited by a 3PID invitation.

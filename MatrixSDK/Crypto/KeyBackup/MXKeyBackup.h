@@ -19,8 +19,9 @@
 #import "MXRestClient.h"
 #import "MXMegolmBackupCreationInfo.h"
 #import "MXKeyBackupVersionTrust.h"
+#import "MXSecretShareManager.h"
 
-@class OLMPkEncryption;
+@protocol MXKeyBackupAlgorithm, MXKeyBackupEngine;
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -113,6 +114,19 @@ FOUNDATION_EXPORT NSString *const kMXKeyBackupDidStateChangeNotification;
  */
 @interface MXKeyBackup : NSObject
 
+/**
+ Constructor.
+
+ @param engine backup engine that stores and manages keys
+ @param restClient rest client to perform http requests
+ @param secretShareManager manages of secrets sharing
+ @param queue dispatch queue to perform all operations on
+ */
+- (instancetype)initWithEngine:(id<MXKeyBackupEngine>)engine
+                    restClient:(MXRestClient *)restClient
+            secretShareManager:(MXSecretShareManager *)secretShareManager
+                         queue:(dispatch_queue_t)queue;
+
 #pragma mark - Backup management
 
 /**
@@ -140,11 +154,13 @@ FOUNDATION_EXPORT NSString *const kMXKeyBackupDidStateChangeNotification;
 
  @param password an optional passphrase string that can be entered by the user
         when restoring the backup as an alternative to entering the recovery key.
+ @param algorithm desired algorithm to use. Will fail if provided an unknown algorithm.
 
  @param success A block object called when the operation succeeds.
  @param failure A block object called when the operation fails
  */
 - (void)prepareKeyBackupVersionWithPassword:(nullable NSString *)password
+                                  algorithm:(nullable NSString *)algorithm
                                     success:(void (^)(MXMegolmBackupCreationInfo *keyBackupCreationInfo))success
                                     failure:(nullable void (^)(NSError *error))failure;
 
@@ -222,14 +238,6 @@ FOUNDATION_EXPORT NSString *const kMXKeyBackupDidStateChangeNotification;
 #pragma mark - Backup restoring
 
 /**
- Check if a key is a valid recovery key.
-
- @param recoveryKey the string to valid.
- @return YES if valid
- */
-+ (BOOL)isValidRecoveryKey:(NSString*)recoveryKey;
-
-/**
  Restore a backup with a recovery key from a given backup version stored on the homeserver.
 
  @param keyBackupVersion the backup version to restore from.
@@ -297,6 +305,10 @@ FOUNDATION_EXPORT NSString *const kMXKeyBackupDidStateChangeNotification;
 */
 @property (nonatomic, readonly) BOOL hasPrivateKeyInCryptoStore;
 
+/**
+ The ratio of imported vs total keys or nil if not actively importing keys
+ */
+@property (nullable, nonatomic, readonly) NSProgress *importProgress;
 
 #pragma mark - Backup trust
 
@@ -394,14 +406,27 @@ FOUNDATION_EXPORT NSString *const kMXKeyBackupDidStateChangeNotification;
 @property (nonatomic, readonly, nullable) MXKeyBackupVersion *keyBackupVersion;
 
 /**
- The backup key being used.
- */
-@property (nonatomic, readonly, nullable) OLMPkEncryption *backupKey;
-
-/**
  Indicate if their are keys to backup.
  */
 @property (nonatomic, readonly) BOOL hasKeysToBackup;
+
+/**
+ Flag indicating the backup can be refreshed, by `forceRefresh:failure:` method.
+ */
+@property (nonatomic, readonly) BOOL canBeRefreshed;
+
+/**
+ Check the server for an active key backup.
+
+ If one is present and has a valid signature from one of the user's verified
+ devices, start backing up to it.
+ */
+- (void)checkAndStartKeyBackup;
+
+/**
+ Do a backup if there are new keys.
+ */
+- (void)maybeSendKeyBackup;
 
 @end
 

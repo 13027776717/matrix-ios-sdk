@@ -21,6 +21,7 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
+@class MXRecoveryServiceDependencies;
 
 #pragma mark - Constants
 
@@ -35,9 +36,15 @@ typedef NS_ENUM(NSInteger, MXRecoveryServiceErrorCode)
     MXRecoveryServiceBadRecoveryKeyFormatErrorCode,
 };
 
+@protocol MXRecoveryServiceDelegate <NSObject>
+- (void)setUserVerification:(BOOL)verificationStatus
+                    forUser:(NSString*)userId
+                    success:(void (^)(void))success
+                    failure:(void (^)( NSError * _Nullable error))failure;
+@end
 
 /**
- `MXRecoveryService` manages the backup of secrets/keys used by `MXCrypto``.
+ `MXRecoveryService` manages the backup of secrets/keys used by `MXCrypto`.
  
  It stores secrets stored locally (`MXCryptoStore`) on the homeserver SSSS (`MXSecretStorage`)
  and vice versa.
@@ -55,6 +62,9 @@ typedef NS_ENUM(NSInteger, MXRecoveryServiceErrorCode)
     - Key backup key
  */
 @property (nonatomic, copy) NSArray<NSString*> *supportedSecrets;
+
+- (instancetype)initWithDependencies:(MXRecoveryServiceDependencies *)dependencies
+                            delegate:(id<MXRecoveryServiceDelegate>)delegate;
 
 
 #pragma mark - Recovery setup

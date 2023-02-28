@@ -152,7 +152,9 @@ NSString *const kMXCallSupportsTransferringStatusDidChange = @"kMXCallSupportsTr
         callStackCall = [callManager.callStack createCall];
         if (nil == callStackCall)
         {
-            MXLogError(@"[MXCall][%@] Error: Cannot create call. [MXCallStack createCall] returned nil.", _callId);
+            MXLogErrorDetails(@"[MXCall] Error: Cannot create call. [MXCallStack createCall] returned nil.", @{
+                @"call_id": _callId ?: @"unknown"
+            });
             [callManager.mxSession releasePreventPause];
             return nil;
         }
@@ -326,20 +328,22 @@ NSString *const kMXCallSupportsTransferringStatusDidChange = @"kMXCallSupportsTr
                 } failure:^(NSError *error) {
                     MXStrongifyAndReturnIfNil(self);
                     
-                    MXLogError(@"[MXCall][%@] callWithVideo: ERROR: Cannot send m.call.invite event.", self.callId);
+                    MXLogErrorDetails(@"[MXCall] callWithVideo: ERROR: Cannot send m.call.invite event.", @{
+                        @"call_id": self.callId ?: @"unknown"
+                    });
                     [self didEncounterError:error reason:MXCallHangupReasonUnknownError];
                 }];
 
             } failure:^(NSError *error) {
                 MXStrongifyAndReturnIfNil(self);
                 
-                MXLogError(@"[MXCall][%@] callWithVideo: ERROR: Cannot create offer. Error: %@", self.callId, error);
+                MXLogErrorDetails(@"[MXCall] callWithVideo: ERROR: Cannot create offer", [self detailsForError:error]);
                 [self didEncounterError:error reason:MXCallHangupReasonIceFailed];
             }];
         } failure:^(NSError *error) {
             MXStrongifyAndReturnIfNil(self);
             
-            MXLogError(@"[MXCall][%@] callWithVideo: ERROR: Cannot start capturing media. Error: %@", self.callId, error);
+            MXLogErrorDetails(@"[MXCall] callWithVideo: ERROR: Cannot start capturing media", [self detailsForError:error]);
             [self didEncounterError:error reason:MXCallHangupReasonUserMediaFailed];
         }];
     }];
@@ -409,14 +413,16 @@ NSString *const kMXCallSupportsTransferringStatusDidChange = @"kMXCallSupportsTr
                     } failure:^(NSError *error) {
                         MXStrongifyAndReturnIfNil(self);
                         
-                        MXLogError(@"[MXCall][%@] answer: ERROR: Cannot send m.call.answer event.", self.callId);
+                        MXLogErrorDetails(@"[MXCall] answer: ERROR: Cannot send m.call.answer event.", @{
+                            @"call_id": self.callId ?: @"unknown"
+                        });
                         [self didEncounterError:error reason:MXCallHangupReasonUnknownError];
                     }];
 
                 } failure:^(NSError *error) {
                     MXStrongifyAndReturnIfNil(self);
                     
-                    MXLogError(@"[MXCall][%@] answer: ERROR: Cannot create answer. Error: %@", self.callId, error);
+                    MXLogErrorDetails(@"[MXCall] answer: ERROR: Cannot create answer", [self detailsForError:error]);
                     [self didEncounterError:error reason:MXCallHangupReasonIceFailed];
                 }];
             };
@@ -433,7 +439,7 @@ NSString *const kMXCallSupportsTransferringStatusDidChange = @"kMXCallSupportsTr
                 [self->callManager.mxSession.crypto ensureEncryptionInRoom:self.callSignalingRoom.roomId success:answer failure:^(NSError *error) {
                     MXStrongifyAndReturnIfNil(self);
                     
-                    MXLogError(@"[MXCall][%@] answer: ERROR: [MXCrypto ensureEncryptionInRoom] failed. Error: %@", self.callId, error);
+                    MXLogErrorDetails(@"[MXCall] answer: ERROR: [MXCrypto ensureEncryptionInRoom] failed", [self detailsForError:error]);
                     [self didEncounterError:error reason:MXCallHangupReasonUnknownError];
                 }];
             }
@@ -508,7 +514,9 @@ NSString *const kMXCallSupportsTransferringStatusDidChange = @"kMXCallSupportsTr
             } failure:^(NSError *error) {
                 MXStrongifyAndReturnIfNil(self);
                 
-                MXLogError(@"[MXCall][%@] hangup: ERROR: Cannot send m.call.reject event.", self.callId);
+                MXLogErrorDetails(@"[MXCall] hangup: ERROR: Cannot send m.call.reject event.", @{
+                    @"call_id": self.callId ?: @"unknown"
+                });
                 [self didEncounterError:error reason:MXCallHangupReasonUnknownError];
             }];
         }
@@ -553,7 +561,9 @@ NSString *const kMXCallSupportsTransferringStatusDidChange = @"kMXCallSupportsTr
             } failure:^(NSError *error) {
                 MXStrongifyAndReturnIfNil(self);
                 
-                MXLogError(@"[MXCall][%@] hangupWithReason: ERROR: Cannot send m.call.hangup event.", self.callId);
+                MXLogErrorDetails(@"[MXCall] hangupWithReason: ERROR: Cannot send m.call.hangup event.", @{
+                    @"call_id": self.callId ?: @"unknown"
+                });
                 [self didEncounterError:error reason:MXCallHangupReasonUnknownError];
             }];
         }
@@ -645,14 +655,16 @@ NSString *const kMXCallSupportsTransferringStatusDidChange = @"kMXCallSupportsTr
             } failure:^(NSError *error) {
                 MXStrongifyAndReturnIfNil(self);
                 
-                MXLogError(@"[MXCall][%@] hold: ERROR: Cannot send m.call.negotiate event.", self.callId);
+                MXLogErrorDetails(@"[MXCall] hold: ERROR: Cannot send m.call.negotiate event.", @{
+                    @"call_id": self.callId ?: @"unknown"
+                });
                 [self didEncounterError:error reason:MXCallHangupReasonUnknownError];
             }];
             
         } failure:^(NSError * _Nonnull error) {
             MXStrongifyAndReturnIfNil(self);
             
-            MXLogError(@"[MXCall][%@] hold: ERROR: Cannot create offer. Error: %@", self.callId, error);
+            MXLogErrorDetails(@"[MXCall] hold: ERROR: Cannot create offer", [self detailsForError:error]);
             [self didEncounterError:error reason:MXCallHangupReasonIceFailed];
         }];
     }];
@@ -733,7 +745,9 @@ NSString *const kMXCallSupportsTransferringStatusDidChange = @"kMXCallSupportsTr
                                     failure:^(NSError *error) {
         MXStrongifyAndReturnIfNil(self);
         
-        MXLogError(@"[MXCall][%@] transferToRoom: ERROR: Cannot send m.call.replaces event.", self.callId);
+        MXLogErrorDetails(@"[MXCall] transferToRoom: ERROR: Cannot send m.call.replaces event", @{
+            @"call_id": self.callId ?: @"unknown"
+        });
         if (failure)
         {
             failure(error);
@@ -821,13 +835,7 @@ NSString *const kMXCallSupportsTransferringStatusDidChange = @"kMXCallSupportsTr
     else if (MXCallStateInviteSent == state)
     {
         // Start the life expiration timer for the sent invitation
-        inviteExpirationTimer = [[NSTimer alloc] initWithFireDate:[NSDate dateWithTimeIntervalSinceNow:callManager.inviteLifetime / 1000]
-                                                         interval:0
-                                                           target:self
-                                                         selector:@selector(expireCallInvite)
-                                                         userInfo:nil
-                                                          repeats:NO];
-        [[NSRunLoop mainRunLoop] addTimer:inviteExpirationTimer forMode:NSDefaultRunLoopMode];
+        [self startInviteExpirationTimer];
     }
 
     _state = state;
@@ -1029,7 +1037,9 @@ NSString *const kMXCallSupportsTransferringStatusDidChange = @"kMXCallSupportsTr
         [_callSignalingRoom sendEventOfType:kMXEventTypeStringCallCandidates content:content threadId:nil localEcho:nil success:nil failure:^(NSError *error) {
             MXStrongifyAndReturnIfNil(self);
             
-            MXLogError(@"[MXCall][%@] onICECandidate: Warning: Cannot send m.call.candidates event.", self.callId);
+            MXLogErrorDetails(@"[MXCall] onICECandidate: Warning: Cannot send m.call.candidates event", @{
+                @"call_id": self.callId ?: @"unknown"
+            });
             [self didEncounterError:error reason:MXCallHangupReasonUnknownError];
         }];
 
@@ -1049,7 +1059,7 @@ NSString *const kMXCallSupportsTransferringStatusDidChange = @"kMXCallSupportsTr
 
 - (void)callStackCall:(id<MXCallStackCall>)callStackCall onError:(NSError *)error
 {
-    MXLogError(@"[MXCall][%@] callStackCall didEncounterError: %@", _callId, error);
+    MXLogErrorDetails(@"[MXCall] callStackCall didEncounterError", [self detailsForError:error]);
     
     if (self.isEstablished)
     {
@@ -1152,7 +1162,7 @@ NSString *const kMXCallSupportsTransferringStatusDidChange = @"kMXCallSupportsTr
                                      failure:^(NSError * _Nonnull error) {
                 MXStrongifyAndReturnIfNil(self);
                 
-                MXLogError(@"[MXCall][%@] handleCallInvite: ERROR: Couldn't handle offer. Error: %@", self.callId, error);
+                MXLogErrorDetails(@"[MXCall] handleCallInvite: ERROR: Couldn't handle offer", [self detailsForError:error]);
                 [self didEncounterError:error reason:MXCallHangupReasonUnknownError];
             }];
             
@@ -1160,19 +1170,37 @@ NSString *const kMXCallSupportsTransferringStatusDidChange = @"kMXCallSupportsTr
         } failure:^(NSError *error) {
             MXStrongifyAndReturnIfNil(self);
             
-            MXLogError(@"[MXCall][%@] handleCallInvite: startCapturingMediaWithVideo : ERROR: Couldn't start capturing. Error: %@", self.callId, error);
+            MXLogErrorDetails(@"[MXCall] handleCallInvite: startCapturingMediaWithVideo : ERROR: Couldn't start capturing", [self detailsForError:error]);
             [self didEncounterError:error reason:MXCallHangupReasonUserMediaFailed];
         }];
 
-        // Start expiration timer
-        self->inviteExpirationTimer = [[NSTimer alloc] initWithFireDate:[NSDate dateWithTimeIntervalSinceNow:self->callInviteEventContent.lifetime / 1000]
-                                                         interval:0
-                                                           target:self
-                                                         selector:@selector(expireCallInvite)
-                                                         userInfo:nil
-                                                          repeats:NO];
-        [[NSRunLoop mainRunLoop] addTimer:self->inviteExpirationTimer forMode:NSDefaultRunLoopMode];
+        // Start an expiration timer
+        [self startInviteExpirationTimer];
     }];
+}
+
+- (void)startInviteExpirationTimer {
+    if (inviteExpirationTimer)
+    {
+        return;
+    }
+    
+    // Start expiration timer
+    inviteExpirationTimer = [[NSTimer alloc] initWithFireDate:[NSDate dateWithTimeIntervalSinceNow:callInviteEventContent.lifetime / 1000]
+                                                     interval:0
+                                                       target:self
+                                                     selector:@selector(expireCallInvite)
+                                                     userInfo:nil
+                                                      repeats:NO];
+    [[NSRunLoop mainRunLoop] addTimer:inviteExpirationTimer forMode:NSDefaultRunLoopMode];
+}
+
+- (void)invalidateInviteExpirationTimer {
+    if (inviteExpirationTimer)
+    {
+        [inviteExpirationTimer invalidate];
+        inviteExpirationTimer = nil;
+    }
 }
 
 - (void)handleCallAnswer:(MXEvent *)event
@@ -1181,6 +1209,12 @@ NSString *const kMXCallSupportsTransferringStatusDidChange = @"kMXCallSupportsTr
     
     if ([self isMyEvent:event])
     {
+        return;
+    }
+    
+    if (_state == MXCallStateEnded) {
+        // this call is already ended
+        MXLogDebug(@"[MXCall][%@] handleCallAnswer: this call is already ended", _callId);
         return;
     }
     
@@ -1197,11 +1231,7 @@ NSString *const kMXCallSupportsTransferringStatusDidChange = @"kMXCallSupportsTr
         MXCallAnswerEventContent *content = [MXCallAnswerEventContent modelFromJSON:event.content];
 
         // The peer accepted our outgoing call
-        if (inviteExpirationTimer)
-        {
-            [inviteExpirationTimer invalidate];
-            inviteExpirationTimer = nil;
-        }
+        [self invalidateInviteExpirationTimer];
         
         //  mark this as the selected one
         self.selectedAnswer = event;
@@ -1216,7 +1246,7 @@ NSString *const kMXCallSupportsTransferringStatusDidChange = @"kMXCallSupportsTr
                                 failure:^(NSError *error) {
                 MXStrongifyAndReturnIfNil(self);
                 
-                MXLogError(@"[MXCall][%@] handleCallAnswer: ERROR: Cannot send handle answer. Error: %@\nEvent: %@", self.callId, error, event);
+                MXLogErrorDetails(@"[MXCall] handleCallAnswer: ERROR: Cannot send handle answer", [self detailsForError:error]);
                 self.selectedAnswer = nil;
                 [self didEncounterError:error reason:MXCallHangupReasonIceFailed];
             }];
@@ -1244,7 +1274,7 @@ NSString *const kMXCallSupportsTransferringStatusDidChange = @"kMXCallSupportsTr
             } failure:^(NSError *error) {
                 MXStrongifyAndReturnIfNil(self);
                 
-                MXLogError(@"[MXCall][%@] handleCallAnswer: ERROR: Cannot send m.call.select_answer event. Error: %@\n", self.callId, error);
+                MXLogErrorDetails(@"[MXCall] handleCallAnswer: ERROR: Cannot send m.call.select_answer event", [self detailsForError:error]);
                 self.selectedAnswer = nil;
                 [self didEncounterError:error reason:MXCallHangupReasonUnknownError];
             }];
@@ -1268,6 +1298,12 @@ NSString *const kMXCallSupportsTransferringStatusDidChange = @"kMXCallSupportsTr
     
     if ([self isMyEvent:event])
     {
+        return;
+    }
+    
+    if (_state == MXCallStateEnded) {
+        // this call is already ended
+        MXLogDebug(@"[MXCall][%@] handleCallAnswer: this call is already ended", _callId);
         return;
     }
     
@@ -1337,11 +1373,7 @@ NSString *const kMXCallSupportsTransferringStatusDidChange = @"kMXCallSupportsTr
         }
         
         // The peer rejected our outgoing call
-        if (inviteExpirationTimer)
-        {
-            [inviteExpirationTimer invalidate];
-            inviteExpirationTimer = nil;
-        }
+        [self invalidateInviteExpirationTimer];
         
         if (_state != MXCallStateEnded)
         {
@@ -1369,7 +1401,7 @@ NSString *const kMXCallSupportsTransferringStatusDidChange = @"kMXCallSupportsTr
             } failure:^(NSError *error) {
                 MXStrongifyAndReturnIfNil(self);
                 
-                MXLogError(@"[MXCall][%@] handleCallReject: ERROR: Cannot send m.call.select_answer event. Error: %@\n", self.callId, error);
+                MXLogErrorDetails(@"[MXCall] handleCallReject: ERROR: Cannot send m.call.select_answer event", [self detailsForError:error]);
                 self.selectedAnswer = nil;
                 [self didEncounterError:error reason:MXCallHangupReasonUnknownError];
             }];
@@ -1433,20 +1465,22 @@ NSString *const kMXCallSupportsTransferringStatusDidChange = @"kMXCallSupportsTr
                     [self.callSignalingRoom sendEventOfType:kMXEventTypeStringCallNegotiate content:content threadId:nil localEcho:nil success:nil failure:^(NSError *error) {
                         MXStrongifyAndReturnIfNil(self);
                         
-                        MXLogError(@"[MXCall][%@] handleCallNegotiate: negotiate answer: ERROR: Cannot send m.call.negotiate event.", self.callId);
+                        MXLogErrorDetails(@"[MXCall] handleCallNegotiate: negotiate answer: ERROR: Cannot send m.call.negotiate event.", @{
+                            @"call_id": self.callId ?: @"unknown"
+                        });
                         [self didEncounterError:error reason:MXCallHangupReasonUnknownError];
                     }];
                 } failure:^(NSError * _Nonnull error) {
                     MXStrongifyAndReturnIfNil(self);
                     
-                    MXLogError(@"[MXCall][%@] handleCallNegotiate: negotiate answer: ERROR: Cannot create negotiate answer. Error: %@", self.callId, error);
+                    MXLogErrorDetails(@"[MXCall] handleCallNegotiate: negotiate answer: ERROR: Cannot create negotiate answer", [self detailsForError:error]);
                     [self didEncounterError:error reason:MXCallHangupReasonIceFailed];
                 }];
             }
                                      failure:^(NSError * _Nonnull error) {
                 MXStrongifyAndReturnIfNil(self);
                 
-                MXLogError(@"[MXCall][%@] handleCallNegotiate: ERROR: Couldn't handle negotiate offer. Error: %@", self.callId, error);
+                MXLogErrorDetails(@"[MXCall] handleCallNegotiate: ERROR: Couldn't handle negotiate offer", [self detailsForError:error]);
                 [self didEncounterError:error reason:MXCallHangupReasonIceFailed];
             }];
         }
@@ -1458,7 +1492,7 @@ NSString *const kMXCallSupportsTransferringStatusDidChange = @"kMXCallSupportsTr
                                 failure:^(NSError *error) {
                 MXStrongifyAndReturnIfNil(self);
                 
-                MXLogError(@"[MXCall][%@] handleCallNegotiate: ERROR: Cannot send handle negotiate answer. Error: %@\nEvent: %@", self.callId, error, event);
+                MXLogErrorDetails(@"[MXCall] handleCallNegotiate: ERROR: Cannot send handle negotiate answer", [self detailsForError:error]);
                 [self didEncounterError:error reason:MXCallHangupReasonIceFailed];
             }];
         }
@@ -1580,11 +1614,7 @@ NSString *const kMXCallSupportsTransferringStatusDidChange = @"kMXCallSupportsTr
 
 - (void)terminateWithReason:(MXEvent *)event
 {
-    if (inviteExpirationTimer)
-    {
-        [inviteExpirationTimer invalidate];
-        inviteExpirationTimer = nil;
-    }
+    [self invalidateInviteExpirationTimer];
 
     // Do not refresh TURN servers config anymore
     [localIceGatheringTimer invalidate];
@@ -1693,14 +1723,17 @@ NSString *const kMXCallSupportsTransferringStatusDidChange = @"kMXCallSupportsTr
             [callStackCall end];
         }
 
-        // Send the notif that the call expired to the app
-        [self setState:MXCallStateInviteExpired reason:nil];
-        
-        // Set appropriate call end reason
-        _endReason = MXCallEndReasonMissed;
-
-        // And set the final state: MXCallStateEnded
-        [self setState:MXCallStateEnded reason:nil];
+        // If the call is not aleady ended
+        if (_state != MXCallStateEnded) {
+            // Send the notif that the call expired to the app
+            [self setState:MXCallStateInviteExpired reason:nil];
+            
+            // Set appropriate call end reason
+            _endReason = MXCallEndReasonMissed;
+            
+            // And set the final state: MXCallStateEnded
+            [self setState:MXCallStateEnded reason:nil];
+        }
 
         // The call manager can now ignore this call
         [callManager removeCall:self];
@@ -1710,6 +1743,9 @@ NSString *const kMXCallSupportsTransferringStatusDidChange = @"kMXCallSupportsTr
 - (void)onCallAnsweredElsewhere
 {
     MXLogDebug(@"[MXCall][%@] onCallAnsweredElsewhere", _callId)
+    
+    // The call has been accepted elsewhere
+    [self invalidateInviteExpirationTimer];
     
     // Send the notif that the call has been answered from another device to the app
     [self setState:MXCallStateAnsweredElseWhere reason:nil];
@@ -1728,7 +1764,10 @@ NSString *const kMXCallSupportsTransferringStatusDidChange = @"kMXCallSupportsTr
 {
     MXLogDebug(@"[MXCall][%@] onCallDeclinedElsewhere", _callId)
     
-    // Send the notif that the call has been answered from another device to the app
+    // The call has been declined from another device
+    [self invalidateInviteExpirationTimer];
+    
+    // Send the notif that the call has been declined from another device to the app
     [self setState:MXCallStateAnsweredElseWhere reason:nil];
     
     // Set appropriate call end reason
@@ -1739,6 +1778,14 @@ NSString *const kMXCallSupportsTransferringStatusDidChange = @"kMXCallSupportsTr
 
     // The call manager can now ignore this call
     [callManager removeCall:self];
+}
+
+-(NSDictionary *)detailsForError:(NSError *)error
+{
+    return @{
+        @"call_id": self.callId ?: @"unknown",
+        @"error": error ?: @"unknown"
+    };
 }
 
 @end

@@ -19,6 +19,13 @@
 #import <Foundation/Foundation.h>
 
 /**
+ Key types
+ */
+FOUNDATION_EXPORT NSString *const kMXKeyCurve25519Type;
+FOUNDATION_EXPORT NSString *const kMXKeySignedCurve25519Type;
+FOUNDATION_EXPORT NSString *const kMXKeyEd25519Type;
+
+/**
  Matrix algorithm tag for olm.
  */
 FOUNDATION_EXPORT NSString *const kMXCryptoOlmAlgorithm;
@@ -29,15 +36,24 @@ FOUNDATION_EXPORT NSString *const kMXCryptoOlmAlgorithm;
 FOUNDATION_EXPORT NSString *const kMXCryptoMegolmAlgorithm;
 
 /**
- Matrix algorithm tag for megolm keys backup.
+ Matrix Curve25519 algorithm tag for key backup.
  */
-FOUNDATION_EXPORT NSString *const kMXCryptoMegolmBackupAlgorithm;
+FOUNDATION_EXPORT NSString *const kMXCryptoCurve25519KeyBackupAlgorithm;
+
+/**
+ Matrix Aes256 algorithm tag for key backup.
+ */
+FOUNDATION_EXPORT NSString *const kMXCryptoAes256KeyBackupAlgorithm;
 
 /**
  MXKeyProvider identifier for a 32 bytes long key to pickle secrets managed by the olm library.
  */
 FOUNDATION_EXPORT NSString *const MXCryptoOlmPickleKeyDataType;
 
+/**
+ MXKeyProvider identifier for a 32 bytes long key to a store managed by the Crypto SDK.
+ */
+FOUNDATION_EXPORT NSString *const MXCryptoSDKStoreKeyDataType;
 
 #pragma mark - Encrypting error
 
@@ -73,5 +89,7 @@ typedef enum : NSUInteger
     MXKeyBackupErrorMissingPrivateKeySaltCode,
     MXKeyBackupErrorMissingAuthDataCode,
     MXKeyBackupErrorInvalidOrMissingLocalPrivateKey,
+    MXKeyBackupErrorUnknownAlgorithm,
+    MXKeyBackupErrorAlreadyInProgress,
 
 } MXKeyBackupErrorCode;

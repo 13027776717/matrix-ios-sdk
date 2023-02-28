@@ -36,6 +36,15 @@
         }
         MXJSONModelSetString(sessionData.algorithm, JSONDictionary[@"algorithm"]);
         MXJSONModelSetArray(sessionData.forwardingCurve25519KeyChain, JSONDictionary[@"forwarding_curve25519_key_chain"])
+        if (JSONDictionary[@"untrusted"])
+        {
+            MXJSONModelSetBoolean(sessionData.untrusted, JSONDictionary[@"untrusted"]);
+        }
+        else
+        {
+            // if "untrusted" is omitted, mark it as trusted
+            sessionData.untrusted = NO;
+        }
     }
 
     return sessionData;
@@ -43,16 +52,55 @@
 
 - (NSDictionary *)JSONDictionary
 {
+    if (!_senderKey || !_roomId || !_sessionId || !_sessionKey || !_algorithm)
+    {
+        NSDictionary *details = @{
+            @"sender_key": _senderKey ?: @"unknown",
+            @"room_id": _roomId ?: @"unknown",
+            @"session_id": _sessionId ?: @"unknown",
+            @"algorithm": _algorithm ?: @"unknown",
+        };
+        MXLogErrorDetails(@"[MXMegolmSessionData] JSONDictionary: some properties are missing", details);
+        return nil;
+    }
+    
     return @{
       @"sender_key": _senderKey,
-      @"sender_claimed_keys": _senderClaimedKeys,
+      @"sender_claimed_keys": _senderClaimedKeys ?: @[],
       @"room_id": _roomId,
       @"session_id": _sessionId,
       @"session_key":_sessionKey,
       kMXSharedHistoryKeyName: @(_sharedHistory),
       @"algorithm": _algorithm,
-      @"forwarding_curve25519_key_chain": _forwardingCurve25519KeyChain ? _forwardingCurve25519KeyChain : @[]
+      @"forwarding_curve25519_key_chain": _forwardingCurve25519KeyChain ?: @[],
+      @"untrusted": @(_untrusted)
       };
+}
+
+- (BOOL)checkFieldsBeforeEncryption
+{
+    if (!_algorithm)
+    {
+        MXLogDebug(@"[MXMegolmSessionData] checkFieldsBeforeEncryption: missing algorithm");
+        return NO;
+    }
+    if (!_senderKey)
+    {
+        MXLogDebug(@"[MXMegolmSessionData] checkFieldsBeforeEncryption: missing senderKey");
+        return NO;
+    }
+    if (!_senderClaimedKeys)
+    {
+        MXLogDebug(@"[MXMegolmSessionData] checkFieldsBeforeEncryption: missing senderClaimedKeys");
+        return NO;
+    }
+    if (!_sessionKey)
+    {
+        MXLogDebug(@"[MXMegolmSessionData] checkFieldsBeforeEncryption: missing sessionKey");
+        return NO;
+    }
+
+    return YES;
 }
 
 @end

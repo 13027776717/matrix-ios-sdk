@@ -37,8 +37,9 @@ FOUNDATION_EXPORT NSArray<NSString*> *kKnownShortCodes;
 /**
  The `MXKeyVerificationTransaction` extension exposes internal operations.
  */
-@interface MXDefaultSASTransaction ()
+@interface MXLegacySASTransaction ()
 
+@property (nonatomic) MXSASTransactionState state;
 @property (nonatomic) OLMSAS *olmSAS;
 @property (nonatomic, nullable) MXSASKeyVerificationStart *startContent;
 @property (nonatomic) MXKeyVerificationAccept *accepted;

@@ -18,7 +18,6 @@ import Foundation
 import AVFoundation
 
 /// Audio output router class
-@available(iOS 10.0, *)
 @objcMembers
 public class MXiOSAudioOutputRouter: NSObject {
     
@@ -189,7 +188,7 @@ public class MXiOSAudioOutputRouter: NSObject {
             }
             currentRoute = route
         } catch {
-            MXLog.error("[MXiOSAudioOutputRouter] updateRoute: routing failed: \(error)")
+            MXLog.error("[MXiOSAudioOutputRouter] updateRoute: routing failed", context: error)
         }
     }
 
